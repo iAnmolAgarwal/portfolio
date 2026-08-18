@@ -39,7 +39,8 @@ async function run() {
   startedAt = performance.now();
   const typed = $('typed');
   const think = $('think');
-  const thinkText = $('think-text');
+  const thinkWord = $('think-word');
+  const thinkMeta = $('think-meta');
   const spark = $('spark');
   const skipBtn = $('skip');
   const cmd = typed.dataset.cmd ?? typed.textContent ?? '';
@@ -71,7 +72,9 @@ async function run() {
   while (performance.now() - t0 < thinkFor && !skipped) {
     const el = (performance.now() - t0) / 1000;
     if (Math.floor(el / 0.7) !== word) word = Math.floor(el / 0.7);
-    thinkText.textContent = `${WORDS[word % WORDS.length]}… (${el.toFixed(1)}s)`;
+    thinkWord.textContent = `${WORDS[word % WORDS.length]}…`;
+    const toks = Math.round(el * 1400);
+    thinkMeta.textContent = `(${el.toFixed(1)}s · ↓ ${toks >= 1000 ? (toks / 1000).toFixed(1) + 'k' : toks} tokens · thinking with high effort)`;
     await sleep(100);
   }
   if (skipped) return finish();
@@ -103,7 +106,10 @@ async function typeInto(el: HTMLElement) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   const nodes: { node: Text; full: string }[] = [];
   let n: Node | null;
-  while ((n = walker.nextNode())) nodes.push({ node: n as Text, full: (n as Text).data });
+  while ((n = walker.nextNode())) {
+    if ((n.parentElement as HTMLElement | null)?.closest('[aria-hidden]')) continue;
+    nodes.push({ node: n as Text, full: (n as Text).data });
+  }
   nodes.forEach((x) => (x.node.data = ''));
   el.classList.remove('pending');
   el.classList.add('caret');
@@ -168,6 +174,7 @@ const SECTIONS: Record<string, string> = {
   '/experience': 'experience',
   '/cp': 'cp',
   '/stack': 'stack',
+  '/stats': 'stats',
   '/contact': 'contact',
 };
 const HELP: [string, string][] = [
@@ -177,6 +184,7 @@ const HELP: [string, string][] = [
   ['/experience', 'internship + education'],
   ['/cp', 'competitive programming'],
   ['/stack', 'languages and tools'],
+  ['/stats', 'the numbers'],
   ['/contact', 'where to find me'],
   ['/resume', 'open the PDF'],
   ['/clear', 'replay the session'],
@@ -234,10 +242,10 @@ function log(html: string, cls = '') {
 function runCommand(raw: string) {
   const v = raw.startsWith('/') ? raw : `/${raw}`;
   if (running) skip();
-  log(`<span class="prompt-glyph">❯</span> ${escapeHtml(v)}`);
+  log(`<span class="chev" aria-hidden="true">›</span><span>${escapeHtml(v)}</span>`, 'sent');
 
   if (v === '/help') {
-    log(HELP.map(([n, d]) => `  <span class="accent">${n.padEnd(12, ' ')}</span><span class="muted">${d}</span>`).join('\n'), 'muted');
+    log(HELP.map(([n, d]) => `  <span class="accent">${n.padEnd(12, ' ')}</span><span class="meta">${d}</span>`).join('\n'), 'line');
     pulse('done');
     return;
   }
@@ -250,7 +258,7 @@ function runCommand(raw: string) {
     return;
   }
   if (v === '/resume') {
-    log(`<span class="result">opening anmol-agarwal-resume.pdf</span>`);
+    log(`<span class="result">opening anmol-agarwal-resume.pdf</span>`, 'line');
     window.open('/anmol-agarwal-resume.pdf', '_blank', 'noopener');
     pulse('done');
     return;
@@ -261,14 +269,15 @@ function runCommand(raw: string) {
     history.replaceState(null, '', `#${id}`);
     el.scrollIntoView({ block: 'start', behavior: REDUCED ? 'auto' : 'smooth' });
     el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
-    log(`<span class="result">jumped to ${id}</span>`);
+    log(`<span class="result">jumped to ${id}</span>`, 'line');
     pulse('done');
     return;
   }
   const guess = suggest(v);
   log(
     `<span class="err">✗ Unknown command: ${escapeHtml(v)}</span>` +
-      (guess ? ` <span class="muted">— did you mean</span> <a href="#${SECTIONS[guess] ?? 'palette'}" data-sugg="${guess}">${guess}</a><span class="muted">?</span>` : ` <span class="muted">— try /help</span>`),
+      (guess ? ` <span class="meta">— did you mean</span> <a href="#${SECTIONS[guess] ?? 'palette'}" data-sugg="${guess}">${guess}</a><span class="meta">?</span>` : ` <span class="meta">— try /help</span>`),
+    'line',
   ).querySelector('a')?.addEventListener('click', (e) => { e.preventDefault(); runCommand(guess!); });
   pulse('error');
 }
