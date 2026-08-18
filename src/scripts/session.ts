@@ -89,6 +89,7 @@ async function run() {
       continue;
     }
     reveal(el);
+    if (el.classList.contains('tool') || el.classList.contains('result')) el.after(think); // spinner stays bottom-most
     const len = el.textContent?.trim().length ?? 0;
     const pace = el.dataset.pace === 'fast' ? jitter(110, 70) : Math.min(170, 30 + len * 1.2);
     await sleep(pace);
@@ -202,7 +203,8 @@ function initCommands() {
   const paint = () => {
     const v = input.value;
     const c = completion(v);
-    ghost.textContent = c ? ' '.repeat(v.length) + c.slice(v.length) + '  ⇥' : '';
+    ghost.textContent = c ? c.slice(v.length) + '  ⇥' : '';
+    form.style.setProperty('--n', String(v.length));
   };
   input.addEventListener('input', paint);
   input.addEventListener('keydown', (e) => {

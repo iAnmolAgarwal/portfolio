@@ -10,7 +10,8 @@ export const person = {
     'is a CS undergrad at JIIT Noida (batch of 2028). He builds trading systems, AI agents and small embedded devices, and solves competitive-programming problems when the builds are green.',
   now: 'shipping an AI hackathon project (pathwise); BSERC summer internship wrapped in July.',
   location: 'Noida, India',
-  availability: 'available for internships (summer 2027)',
+  availability: 'open to internships (summer 2027)',
+  availabilityShort: 'open to internships',
   email: 'anmolagarwal2625@gmail.com',
   resumePath: '/anmol-agarwal-resume.pdf',
 };
