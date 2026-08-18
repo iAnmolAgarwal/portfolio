@@ -16,7 +16,7 @@ const ART = [
   '.o.o..o..o..o.o.',
   'o..o.o....o.o..o',
 ];
-const COLOR: Record<string, string> = { o: '#d97757', d: '#b45e3e', w: '#eceae4', k: '#191817' };
+const COLOR: Record<string, string> = { o: '#62e262', d: '#2f9f2f', w: '#ffffff', k: '#000000' };
 type Px = { x: number; y: number; c: string; kind: 'body' | 'eye' | 'legL' | 'legR' };
 const px: Px[] = [];
 ART.forEach((row, y) =>
@@ -42,12 +42,12 @@ ART.forEach((row, y) =>
 <style>
   .thwip {
     --size: 64px; --thread: 72px;
-    position: absolute; top: 0; right: 14%; width: 0; z-index: 3;
+    position: absolute; top: -28px; right: 10%; width: 0; z-index: 3;
     transform-origin: top center;
     animation: sway 3.8s ease-in-out infinite;
     transition: translate 600ms cubic-bezier(.34,1.4,.64,1);
   }
-  .thread { width: 1px; height: var(--thread); margin: 0 auto; background: linear-gradient(var(--muted), #5a5751); }
+  .thread { width: 1px; height: var(--thread); margin: 0 auto; background: linear-gradient(var(--muted), #444); }
   .sprite { display: block; width: var(--size); height: calc(var(--size) * .75); margin-left: calc(var(--size) / -2); overflow: visible; }
   .tick { position: absolute; left: calc(var(--size) / 2 + 4px); top: calc(var(--thread) + var(--size) * .3); color: var(--ok); opacity: 0; font-size: 13px; }
 
