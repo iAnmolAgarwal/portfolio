@@ -109,7 +109,7 @@ export const education = {
 };
 
 export const cp = [
-  'Codeforces Pupil — max rating 1362, 209-day solving streak.',
+  'Codeforces Pupil — max rating 1362, 242-day solving streak.',
   'CodeChef 2★ — max rating 1565.',
   '3,000+ problems solved across platforms.',
   'IICPC: global rank #2,155 in an offline international contest with candidates from IITs and NITs.',
@@ -132,6 +132,23 @@ export const links = [
   { label: 'résumé', href: person.resumePath, display: 'anmol-agarwal-resume.pdf' },
 ];
 
+export const whatsNew = [
+  'BSERC summer internship wrapped (Jun–Jul 2026): capstone SkyWatch — real-time flight-telemetry anomaly detection, 79 tests.',
+  'pathwise, an AI learning-path recommender, is in progress for a judged hackathon.',
+  'damage-claim-agent placed global #63 of 1,773 at HackerRank Orchestrate (solo).',
+];
+
+export const stats = {
+  streakDays: 242,
+  rows: [
+    ['Codeforces', 'Pupil · max 1362', 'Solving streak', '242 days'],
+    ['CodeChef', '2★ · max 1565', 'Problems solved', '3,000+'],
+    ['IICPC', 'global #2,155', 'BVCOE Coding Cup', 'top 8 teams'],
+  ] as [string, string, string, string][],
+  footnote: 'Codeforces + CodeChef · figures from the résumé ledger, Aug 2026',
+  quip: '242 days ≈ 34.6 weeks of not missing a single day.',
+};
+
 export const commands = [
   { name: '/help', desc: 'list commands' },
   { name: '/whoami', desc: 'the short version' },
@@ -139,6 +156,7 @@ export const commands = [
   { name: '/experience', desc: 'internship + education' },
   { name: '/cp', desc: 'competitive programming' },
   { name: '/stack', desc: 'languages and tools' },
+  { name: '/stats', desc: 'the numbers' },
   { name: '/contact', desc: 'where to find me' },
   { name: '/resume', desc: 'open the PDF' },
   { name: '/clear', desc: 'replay the session' },

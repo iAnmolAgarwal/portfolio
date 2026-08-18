@@ -16,7 +16,7 @@ const ART = [
   '.o.o..o..o..o.o.',
   'o..o.o....o.o..o',
 ];
-const COLOR: Record<string, string> = { o: '#62e262', d: '#2f9f2f', w: '#ffffff', k: '#000000' };
+const COLOR: Record<string, string> = { o: '#d9825a', d: '#a85e40', w: '#ffffff', k: '#000000' };
 type Px = { x: number; y: number; c: string; kind: 'body' | 'eye' | 'legL' | 'legR' };
 const px: Px[] = [];
 ART.forEach((row, y) =>
@@ -41,13 +41,13 @@ ART.forEach((row, y) =>
 
 <style>
   .thwip {
-    --size: 64px; --thread: 72px;
-    position: absolute; top: -28px; right: 10%; width: 0; z-index: 3;
+    --size: 56px; --thread: 22px;
+    position: relative; width: 0; margin: 0 auto; z-index: 3;
     transform-origin: top center;
     animation: sway 3.8s ease-in-out infinite;
     transition: translate 600ms cubic-bezier(.34,1.4,.64,1);
   }
-  .thread { width: 1px; height: var(--thread); margin: 0 auto; background: linear-gradient(var(--muted), #444); }
+  .thread { width: 1px; height: var(--thread); margin: 0 auto; background: linear-gradient(#6f6f6f, #444); }
   .sprite { display: block; width: var(--size); height: calc(var(--size) * .75); margin-left: calc(var(--size) / -2); overflow: visible; }
   .tick { position: absolute; left: calc(var(--size) / 2 + 4px); top: calc(var(--thread) + var(--size) * .3); color: var(--ok); opacity: 0; font-size: 13px; }
 
@@ -69,7 +69,7 @@ ART.forEach((row, y) =>
   .thwip[data-state='error'] .legL, .thwip[data-state='error'] .legR { animation: none; }
   .thwip[data-state='hidden'] { translate: 0 calc(-1 * var(--thread) - var(--size)); }
 
-  @media (max-width: 640px) { .thwip { right: 12%; --size: 44px; --thread: 52px; } }
+  @media (max-width: 640px) { .thwip { --size: 44px; --thread: 16px; } }
   @media (prefers-reduced-motion: reduce) {
     .thwip, .legL, .legR, .eyes, .thwip[data-state='done'], .thwip[data-state='done'] .tick { animation: none; }
   }

@@ -3,11 +3,19 @@ import '@fontsource-variable/jetbrains-mono';
 import '../styles/global.css';
 import Thwip from '../components/Thwip.astro';
 import ProjectCard from '../components/ProjectCard.astro';
-import { person, projects, experience, education, cp, stack, links, commands } from '../data/portfolio';
+import { person, projects, experience, education, cp, stack, stats, links, commands, whatsNew } from '../data/portfolio';
 
-const BOOT_CMD = 'claude "who is anmol agarwal"';
+const BOOT_CMD = 'tell me about anmol agarwal';
 const title = 'Anmol Agarwal — CS undergrad · trading systems, AI agents, embedded';
 const description = person.tagline;
+
+// 7 rows × 35 columns = 245 cells; the first 242 (column-major, like a calendar) are filled.
+const COLS = 35;
+const cells = Array.from({ length: 7 * COLS }, (_, i) => {
+  const col = Math.floor(i / 7), row = i % 7; // column-major index
+  const day = col * 7 + row;
+  return day < stats.streakDays;
+});
 ---
 
 <html lang="en">
@@ -24,124 +32,167 @@ const description = person.tagline;
     <script is:inline>document.documentElement.classList.add('js');</script>
   </head>
   <body>
-    <div class="wrap">
-      <main class="win" aria-label="terminal session">
-        <Thwip />
-
-        <div class="transcript" id="transcript">
-          <!-- ❯ command -->
-          <div class="line">
-            <span class="prompt-glyph" aria-hidden="true">❯</span>
-            <span id="typed" data-cmd={BOOT_CMD}>{BOOT_CMD}</span>
+    <main class="term" aria-label="terminal session">
+      <!-- 1. welcome banner -->
+      <section class="banner" aria-label="welcome">
+        <div class="frame">
+          <div class="frame-title"><span>anmol@portfolio</span> <span class="ver">v2028.1</span></div>
+          <div class="pane left">
+            <p class="greet"><strong>Welcome, visitor!</strong></p>
+            <div class="mascot"><Thwip /></div>
+            <p class="meta">CS undergrad · JIIT Noida</p>
+            <p class="meta">batch of 2028 · Noida, India</p>
+            <p class="meta">~/anmol</p>
           </div>
-
-          <!-- ✻ thinking (JS-only) -->
-          <div class="line" id="think" hidden aria-live="polite">
-            <span class="spark" id="spark" aria-hidden="true">✻</span>
-            <span class="muted" id="think-text">Pondering…</span>
+          <div class="pane right">
+            <p class="ph">Tips for getting started</p>
+            <p class="tip">Type <code>/projects</code> to see what he has built, or just read on.</p>
+            <hr class="dash" />
+            <p class="ph">What's new</p>
+            {whatsNew.map((l) => <p class="tip">{l}</p>)}
+            <p class="meta"><code>/experience</code> for more</p>
           </div>
+        </div>
+      </section>
 
-          <!-- tool calls -->
-          <div class="tool pending" data-stream data-pace="fast"><span class="bullet" aria-hidden="true">●</span><span>Read(about/anmol.md)</span></div>
+      <p class="notice">⚠ open to internships (summer 2027) · run <code>/contact</code></p>
+
+      <div class="transcript" id="transcript">
+        <!-- 3. sent message -->
+        <div class="sent">
+          <span class="chev" aria-hidden="true">›</span>
+          <span id="typed" data-cmd={BOOT_CMD}>{BOOT_CMD}</span>
+        </div>
+
+        <!-- 4. spinner (JS-only) -->
+        <div class="think" id="think" hidden aria-live="polite">
+          <div><span class="spark" id="spark" aria-hidden="true">✻</span><span class="word" id="think-word">Noodling…</span> <span class="meta" id="think-meta">(0.0s · ↓ 0 tokens · thinking with high effort)</span></div>
+          <div class="result">Tip: any key skips the boot; <code>/help</code> lists commands</div>
+        </div>
+
+        <!-- 5. response -->
+        <div class="answer" id="answer">
+          <div class="tool pending" data-stream data-pace="fast"><span class="bullet" aria-hidden="true">●</span><span class="tname">Read(about/anmol.md)</span></div>
           <div class="result pending" data-stream data-pace="fast">Read 14 lines</div>
-          <div class="tool pending" data-stream data-pace="fast"><span class="bullet" aria-hidden="true">●</span><span>Glob(projects/**)</span></div>
+          <div class="tool pending" data-stream data-pace="fast"><span class="bullet" aria-hidden="true">●</span><span class="tname">Glob(projects/**)</span></div>
           <div class="result pending" data-stream data-pace="fast">Found {projects.length} projects</div>
-          <div class="tool pending" data-stream data-pace="fast"><span class="bullet" aria-hidden="true">●</span><span>Read(cp/ratings.json)</span></div>
-          <div class="result pending" data-stream data-pace="fast">Read 1 file</div>
-          <div class="line muted pending" data-stream data-pace="fast" style="margin-top:6px">Called Read 2 times, Glob once — 0 shell commands</div>
+          <p class="pending summary" data-stream data-pace="fast">Read <b>2</b> files, listed <b>1</b> directory, ran <b>0</b> shell commands</p>
 
-          <!-- the answer = the portfolio -->
-          <div class="answer" id="answer">
-            <p class="lede pending" id="whoami" data-stream data-type>
-              <strong>{person.name}</strong> {person.lede}
-            </p>
-            <p class="pending muted" data-stream style="margin-top:8px">Now: {person.now}</p>
-            <p class="pending" data-stream style="margin-top:14px">Here's the full picture:</p>
-
-            <section class="section" id="projects" aria-labelledby="h-projects">
-              <h2 class="h pending" id="h-projects" data-stream>projects <span class="cmd">/projects</span></h2>
-              {projects.map((p) => <ProjectCard p={p} />)}
-            </section>
-
-            <section class="section" id="experience" aria-labelledby="h-experience">
-              <h2 class="h pending" id="h-experience" data-stream>experience <span class="cmd">/experience</span></h2>
-              <dl class="kv">
-                {experience.map((e) => (
-                  <>
-                    <dt class="pending" data-stream>{e.when}</dt>
-                    <dd class="pending" data-stream>
-                      <strong>{e.role}</strong> · {e.org}
-                      <ul class="bullets">{e.lines.map((l) => <li>{l}</li>)}</ul>
-                      {e.link && <div class="links"><a href={e.link.href} target="_blank" rel="noopener">{e.link.label}</a></div>}
-                    </dd>
-                  </>
-                ))}
-                <dt class="pending" data-stream>{education.when}</dt>
-                <dd class="pending" data-stream>
-                  <strong>{education.degree}</strong> · {education.school}
-                  <ul class="bullets">{education.lines.map((l) => <li>{l}</li>)}</ul>
-                </dd>
-              </dl>
-            </section>
-
-            <section class="section" id="cp" aria-labelledby="h-cp">
-              <h2 class="h pending" id="h-cp" data-stream>competitive programming <span class="cmd">/cp</span></h2>
-              <ul class="bullets">{cp.map((l) => <li class="pending" data-stream>{l}</li>)}</ul>
-            </section>
-
-            <section class="section" id="stack" aria-labelledby="h-stack">
-              <h2 class="h pending" id="h-stack" data-stream>stack <span class="cmd">/stack</span></h2>
-              <dl class="kv">
-                {Object.entries(stack).map(([k, v]) => (
-                  <>
-                    <dt class="pending" data-stream>{k}</dt>
-                    <dd class="pending" data-stream><div class="flags">{v.map((f) => <span class="flag">--{f}</span>)}</div></dd>
-                  </>
-                ))}
-              </dl>
-            </section>
-
-            <section class="section" id="contact" aria-labelledby="h-contact">
-              <h2 class="h pending" id="h-contact" data-stream>contact <span class="cmd">/contact</span></h2>
-              <dl class="kv">
-                {links.map((l) => (
-                  <>
-                    <dt class="pending" data-stream>{l.label}</dt>
-                    <dd class="pending" data-stream><a href={l.href} target={l.href.startsWith('mailto') ? undefined : '_blank'} rel="noopener">{l.display}</a></dd>
-                  </>
-                ))}
-              </dl>
-              <p class="pending muted" data-stream style="margin-top:10px">{person.location} · {person.availability}.</p>
-            </section>
+          <div class="msg pending" id="whoami" data-stream data-type>
+            <span class="bullet" aria-hidden="true">●</span>
+            <div>
+              <p class="lede"><strong>{person.name}</strong> {person.lede}</p>
+              <p class="meta">Now: {person.now}</p>
+              <p style="margin-top:10px">Here's the full picture:</p>
+            </div>
           </div>
+
+          <section class="section" id="projects" aria-labelledby="h-projects">
+            <h2 class="h pending" id="h-projects" data-stream>projects <span class="cmd">/projects</span></h2>
+            {projects.map((p) => <ProjectCard p={p} />)}
+          </section>
+
+          <section class="section" id="experience" aria-labelledby="h-experience">
+            <h2 class="h pending" id="h-experience" data-stream>experience <span class="cmd">/experience</span></h2>
+            <dl class="kv">
+              {experience.map((e) => (
+                <>
+                  <dt class="pending" data-stream>{e.when}</dt>
+                  <dd class="pending" data-stream>
+                    <strong>{e.role}</strong> · {e.org}
+                    <ul class="bullets">{e.lines.map((l) => <li>{l}</li>)}</ul>
+                    {e.link && <div class="links"><a href={e.link.href} target="_blank" rel="noopener">{e.link.label}</a></div>}
+                  </dd>
+                </>
+              ))}
+              <dt class="pending" data-stream>{education.when}</dt>
+              <dd class="pending" data-stream>
+                <strong>{education.degree}</strong> · {education.school}
+                <ul class="bullets">{education.lines.map((l) => <li>{l}</li>)}</ul>
+              </dd>
+            </dl>
+          </section>
+
+          <section class="section" id="cp" aria-labelledby="h-cp">
+            <h2 class="h pending" id="h-cp" data-stream>competitive programming <span class="cmd">/cp</span></h2>
+            <ul class="bullets">{cp.map((l) => <li class="pending" data-stream>{l}</li>)}</ul>
+          </section>
+
+          <section class="section" id="stack" aria-labelledby="h-stack">
+            <h2 class="h pending" id="h-stack" data-stream>stack <span class="cmd">/stack</span></h2>
+            <dl class="kv">
+              {Object.entries(stack).map(([k, v]) => (
+                <>
+                  <dt class="pending" data-stream>{k}</dt>
+                  <dd class="pending" data-stream><span class="flags">{v.map((f) => <code class="flag">--{f}</code>)}</span></dd>
+                </>
+              ))}
+            </dl>
+          </section>
+
+          <section class="section" id="stats" aria-labelledby="h-stats">
+            <h2 class="h pending" id="h-stats" data-stream>stats <span class="cmd">/stats</span></h2>
+            <div class="pending" data-stream>
+              <div class="tabs" aria-hidden="true"><span class="tab on">Overview</span><span class="tab">Models</span></div>
+              <div class="matrix" role="img" aria-label={`${stats.streakDays}-day solving streak shown as a dot matrix`}>
+                <div class="rows"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
+                <div class="grid" style={`--cols:${COLS}`}>{cells.map((on) => <i class={on ? 'on' : ''}></i>)}</div>
+              </div>
+              <p class="legend"><span class="meta">Less</span> <i class="lg"></i><i class="lg on"></i> <span class="meta">More</span> <span class="meta">· {stats.streakDays}-day solving streak</span></p>
+              <p class="range"><b class="orange">All time</b> · <span class="meta">Last 30 days · Last 7 days</span></p>
+              <dl class="statrows">
+                {stats.rows.map(([k1, v1, k2, v2]) => (
+                  <>
+                    <div><dt>{k1}:</dt><dd>{v1}</dd></div>
+                    <div><dt>{k2}:</dt><dd>{v2}</dd></div>
+                  </>
+                ))}
+              </dl>
+              <p class="meta">{stats.footnote}</p>
+              <p class="quip">{stats.quip}</p>
+            </div>
+          </section>
+
+          <section class="section" id="contact" aria-labelledby="h-contact">
+            <h2 class="h pending" id="h-contact" data-stream>contact <span class="cmd">/contact</span></h2>
+            <dl class="kv">
+              {links.map((l) => (
+                <>
+                  <dt class="pending" data-stream>{l.label}</dt>
+                  <dd class="pending" data-stream><a href={l.href} target={l.href.startsWith('mailto') ? undefined : '_blank'} rel="noopener">{l.display}</a></dd>
+                </>
+              ))}
+            </dl>
+            <p class="pending meta" data-stream style="margin-top:10px">{person.location} · {person.availability}.</p>
+          </section>
 
           <div class="worked pending" data-stream><span class="spark" aria-hidden="true">✻</span><span id="worked-text">Worked for 4s</span></div>
           <div class="recap pending" data-stream>※ recap: builds things that must not fail silently. <b>{person.availability}</b>.</div>
-
-          <!-- command palette -->
-          <div class="palette pending" id="palette" data-stream data-pace="fast">
-            <nav class="chips" aria-label="commands">
-              <span class="label">commands:</span>
-              {commands.filter((c) => c.name !== '/clear').map((c) => (
-                <a href={c.name === '/resume' ? person.resumePath : c.name === '/help' ? '#palette' : c.name === '/whoami' ? '#whoami' : `#${c.name.slice(1)}`} data-cmd={c.name} target={c.name === '/resume' ? '_blank' : undefined}>{c.name}</a>
-              ))}
-            </nav>
-            <div class="log" id="log" aria-live="polite"></div>
-            <form class="cmdline" id="cmdform" autocomplete="off">
-              <label for="cmd" class="prompt-glyph" aria-label="command prompt">❯</label>
-              <span class="ghost" id="ghost" aria-hidden="true"></span>
-              <input id="cmd" name="cmd" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="type / for commands" aria-describedby="cmd-hint" />
-              <span class="hint" id="cmd-hint">⇥ complete · ↵ run · esc clear</span>
-            </form>
-          </div>
         </div>
-      </main>
-      <button class="skip" id="skip" type="button" hidden>press any key to skip ↵</button>
-    </div>
 
-    <footer class="statusbar">
-      <span><span class="mode">▶▶ {person.availability}</span> <span class="desk">(shift+tab to cycle · / for commands)</span></span>
-      <span><span class="idle-spark" aria-hidden="true">✻</span>{person.handle}</span>
+        <div class="log" id="log" aria-live="polite"></div>
+        <nav class="chips pending" id="palette" data-stream data-pace="fast" aria-label="commands">
+          <span class="meta">commands:</span>
+          {commands.filter((c) => c.name !== '/clear').map((c) => (
+            <a href={c.name === '/resume' ? person.resumePath : c.name === '/help' ? '#palette' : c.name === '/whoami' ? '#whoami' : `#${c.name.slice(1)}`} data-cmd={c.name} target={c.name === '/resume' ? '_blank' : undefined}>{c.name}</a>
+          ))}
+        </nav>
+      </div>
+    </main>
+
+    <!-- 6. fixed footer: prompt + status bar -->
+    <footer class="footer">
+      <form class="cmdline" id="cmdform" autocomplete="off">
+        <label for="cmd" class="chev" aria-label="command prompt">›</label>
+        <span class="ghost" id="ghost" aria-hidden="true"></span>
+        <input id="cmd" name="cmd" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="" aria-describedby="cmd-hint" />
+        <span class="hint" id="cmd-hint">/ for commands · ⇥ to complete</span>
+      </form>
+      <div class="statusbar">
+        <span><span class="mode">▶▶ {person.availability}</span> <span class="meta desk">(shift+tab to cycle) · esc to interrupt · ← 1 visitor</span></span>
+        <span class="meta">/portfolio</span>
+      </div>
+      <button class="skip" id="skip" type="button" hidden>press any key to skip ↵</button>
     </footer>
 
     <script>
