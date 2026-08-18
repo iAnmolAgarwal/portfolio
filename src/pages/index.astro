@@ -16,7 +16,7 @@ const description = person.tagline;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#191817" />
+    <meta name="theme-color" content="#000000" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
@@ -26,11 +26,6 @@ const description = person.tagline;
   <body>
     <div class="wrap">
       <main class="win" aria-label="terminal session">
-        <div class="titlebar">
-          <span class="dots" aria-hidden="true"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></span>
-          <span>{person.handle} — claude</span>
-          <span class="right">~/anmol · main</span>
-        </div>
         <Thwip />
 
         <div class="transcript" id="transcript">
@@ -53,6 +48,7 @@ const description = person.tagline;
           <div class="result pending" data-stream data-pace="fast">Found {projects.length} projects</div>
           <div class="tool pending" data-stream data-pace="fast"><span class="bullet" aria-hidden="true">●</span><span>Read(cp/ratings.json)</span></div>
           <div class="result pending" data-stream data-pace="fast">Read 1 file</div>
+          <div class="line muted pending" data-stream data-pace="fast" style="margin-top:6px">Called Read 2 times, Glob once — 0 shell commands</div>
 
           <!-- the answer = the portfolio -->
           <div class="answer" id="answer">
@@ -76,6 +72,7 @@ const description = person.tagline;
                     <dd class="pending" data-stream>
                       <strong>{e.role}</strong> · {e.org}
                       <ul class="bullets">{e.lines.map((l) => <li>{l}</li>)}</ul>
+                      {e.link && <div class="links"><a href={e.link.href} target="_blank" rel="noopener">{e.link.label}</a></div>}
                     </dd>
                   </>
                 ))}
@@ -143,8 +140,8 @@ const description = person.tagline;
     </div>
 
     <footer class="statusbar">
-      <span><span class="idle-spark" aria-hidden="true">✻</span><b>{person.handle}</b> <span class="desk">· / for commands · ⇥ to complete · esc to clear</span></span>
-      <span>← {person.availability}</span>
+      <span><span class="mode">▶▶ {person.availability}</span> <span class="desk">(shift+tab to cycle · / for commands)</span></span>
+      <span><span class="idle-spark" aria-hidden="true">✻</span>{person.handle}</span>
     </footer>
 
     <script>

@@ -8,7 +8,7 @@ export const person = {
     'CS undergrad at JIIT Noida, batch of 2028. Builds trading systems, AI agents and small embedded devices; solves competitive-programming problems when the builds are green.',
   lede:
     'is a CS undergrad at JIIT Noida (batch of 2028). He builds trading systems, AI agents and small embedded devices, and solves competitive-programming problems when the builds are green.',
-  now: 'BSERC space-tech summer intern · shipping an AI hackathon project (pathwise).',
+  now: 'shipping an AI hackathon project (pathwise); BSERC summer internship wrapped in July.',
   location: 'Noida, India',
   availability: 'available for internships (summer 2027)',
   email: 'anmolagarwal2625@gmail.com',
@@ -86,28 +86,18 @@ export const projects: Project[] = [
     flags: ['--typescript', '--claude-api', '--wip'],
     status: 'in progress · hackathon',
   },
-  {
-    slug: 'cp-inventory',
-    title: 'CP_inventory',
-    oneLiner: 'algorithms and templates collected across the competitive-programming journey',
-    summary:
-      'The C++ notebook behind 3,000+ solved problems — data structures, algorithms and contest templates, added as they were learned.',
-    highlights: [],
-    flags: ['--cpp', '--algorithms'],
-    status: 'ongoing',
-    repo: 'https://github.com/iAnmolAgarwal/CP_inventory',
-  },
 ];
 
 export const experience = [
   {
     org: 'Bharat Space Education Research Centre (BSERC)',
     role: 'Summer Intern',
-    when: 'Jun 2026 – present',
+    when: 'Jun – Jul 2026',
     lines: [
-      'Selected for a 6-week applied space-technology program spanning generative AI, cybersecurity & digital forensics, and UAV/drone systems.',
-      'Scoping a capstone engineering project.',
+      'Completed a 6-week applied space-technology program (generative AI, cybersecurity & digital forensics, UAV systems).',
+      'Capstone: SkyWatch — a real-time flight-telemetry pipeline that ingests the live public ADS-B feed and flags anomalous flight behaviour on a browser dashboard, with crash-safe atomic state persistence and startup recovery, a hard alert-triage gate (dedup, cooldown, rate limits) and deterministic incident replay — 79 tests, ~2,780 lines of Python.',
     ],
+    link: { label: 'github.com/iAnmolAgarwal/skywatch', href: 'https://github.com/iAnmolAgarwal/skywatch' },
   },
 ];
 

@@ -1,8 +1,8 @@
 # Design brief (approved 2026-08-18)
 
-Concept: the site IS a Claude Code session. Palette: bg #191817, surface #201F1D,
-border #3A3733, text #ECEAE4, muted #8F8B83, accent #D97757, accent-dim #7A4B38,
-ok #7FB07A, err #D95F57. Font: JetBrains Mono Variable.
+Concept: the site IS a Claude Code session, styled like his actual terminal (revised 2026-08-18): bg #000000,
+text green #62E262, headings bold white, muted #8C8C8C, flags blue #6FA8FF, status-bar pink #FF6EB4,
+err #FF5F5F. Font: Menlo/SF Mono first, JetBrains Mono self-hosted fallback.
 
 Boot: type command → ✻ spinner with rotating words + timer → tool-call lines →
 lede streams in chunks → sections reveal (projects as ● Read(...) cards with
