@@ -113,7 +113,8 @@ async function typeInto(el: HTMLElement) {
   }
   nodes.forEach((x) => (x.node.data = ''));
   el.classList.remove('pending');
-  el.classList.add('caret');
+  const caretHost = (el.querySelector('.lede') as HTMLElement | null) ?? el;
+  caretHost.classList.add('caret');
   for (const { node, full } of nodes) {
     // stream in small chunks like a model, not one keystroke at a time
     let i = 0;
@@ -125,7 +126,7 @@ async function typeInto(el: HTMLElement) {
     }
     if (skipped) node.data = full;
   }
-  el.classList.remove('caret');
+  caretHost.classList.remove('caret');
   if (!userScrolled) el.scrollIntoView({ block: 'nearest' });
 }
 
@@ -143,6 +144,7 @@ function revealAll() {
   $('spark').classList.remove('spin');
   for (const el of items) {
     el.classList.remove('pending', 'caret');
+    el.querySelector('.caret')?.classList.remove('caret');
     // restore any partially typed text nodes
     if (el.dataset.type !== undefined) restoreText(el);
   }
