@@ -41,7 +41,7 @@ ART.forEach((row, y) =>
 
 <style>
   .thwip {
-    --size: 56px; --thread: 22px;
+    --size: 88px; --thread: 20px;
     position: relative; width: 0; margin: 0 auto; z-index: 3;
     transform-origin: top center;
     animation: sway 3.8s ease-in-out infinite;
@@ -69,7 +69,7 @@ ART.forEach((row, y) =>
   .thwip[data-state='error'] .legL, .thwip[data-state='error'] .legR { animation: none; }
   .thwip[data-state='hidden'] { translate: 0 calc(-1 * var(--thread) - var(--size)); }
 
-  @media (max-width: 640px) { .thwip { --size: 44px; --thread: 16px; } }
+  @media (max-width: 640px) { .thwip { --size: 66px; --thread: 14px; } }
   @media (prefers-reduced-motion: reduce) {
     .thwip, .legL, .legR, .eyes, .thwip[data-state='done'], .thwip[data-state='done'] .tick { animation: none; }
   }

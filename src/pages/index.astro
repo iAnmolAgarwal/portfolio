@@ -16,6 +16,15 @@ const cells = Array.from({ length: 7 * COLS }, (_, i) => {
   const day = col * 7 + row;
   return day < stats.streakDays;
 });
+// month labels: the grid ends today (the streak is current), so walk back 35 weeks
+const today = new Date();
+const start = new Date(today); start.setDate(today.getDate() - (7 * COLS - 1));
+const months: { label: string; col: number }[] = [];
+for (let c = 0; c < COLS; c++) {
+  const d = new Date(start); d.setDate(start.getDate() + c * 7);
+  const label = d.toLocaleString('en', { month: 'short' });
+  if (!months.length || months[months.length - 1].label !== label) months.push({ label, col: c });
+}
 ---
 
 <html lang="en">
@@ -55,7 +64,7 @@ const cells = Array.from({ length: 7 * COLS }, (_, i) => {
         </div>
       </section>
 
-      <p class="notice">⚠ open to internships (summer 2027) · run <code>/contact</code></p>
+      <p class="notice">⚠ {person.availability} · run <code>/contact</code></p>
 
       <div class="transcript" id="transcript">
         <!-- 3. sent message -->
@@ -76,16 +85,15 @@ const cells = Array.from({ length: 7 * COLS }, (_, i) => {
           <div class="result pending" data-stream data-pace="fast">Read 14 lines</div>
           <div class="tool pending" data-stream data-pace="fast"><span class="bullet" aria-hidden="true">●</span><span class="tname">Glob(projects/**)</span></div>
           <div class="result pending" data-stream data-pace="fast">Found {projects.length} projects</div>
-          <p class="pending summary" data-stream data-pace="fast">Read <b>2</b> files, listed <b>1</b> directory, ran <b>0</b> shell commands</p>
-
           <div class="msg pending" id="whoami" data-stream data-type>
             <span class="bullet" aria-hidden="true">●</span>
             <div>
               <p class="lede"><strong>{person.name}</strong> {person.lede}</p>
               <p class="meta">Now: {person.now}</p>
-              <p style="margin-top:10px">Here's the full picture:</p>
             </div>
           </div>
+          <p class="pending summary" data-stream data-pace="fast">Read <b>2</b> files, listed <b>1</b> directory, ran <b>0</b> shell commands</p>
+          <div class="msg pending" data-stream style="margin-top:14px"><span class="bullet" aria-hidden="true">●</span><p>Here's the full picture:</p></div>
 
           <section class="section" id="projects" aria-labelledby="h-projects">
             <h2 class="h pending" id="h-projects" data-stream>projects <span class="cmd">/projects</span></h2>
@@ -135,10 +143,12 @@ const cells = Array.from({ length: 7 * COLS }, (_, i) => {
             <div class="pending" data-stream>
               <div class="tabs" aria-hidden="true"><span class="tab on">Overview</span><span class="tab">Models</span></div>
               <div class="matrix" role="img" aria-label={`${stats.streakDays}-day solving streak shown as a dot matrix`}>
+                <div></div>
+                <div class="months" style={`--cols:${COLS}`}>{months.map((m) => <span style={`grid-column:${m.col + 1}`}>{m.label}</span>)}</div>
                 <div class="rows"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
                 <div class="grid" style={`--cols:${COLS}`}>{cells.map((on) => <i class={on ? 'on' : ''}></i>)}</div>
               </div>
-              <p class="legend"><span class="meta">Less</span> <i class="lg"></i><i class="lg on"></i> <span class="meta">More</span> <span class="meta">· {stats.streakDays}-day solving streak</span></p>
+              <p class="legend"><span class="meta">Less</span> <i class="lg"></i><i class="lg on"></i> <span class="meta">More</span> <span class="meta">· every cell = one day solved · {stats.streakDays} and counting</span></p>
               <p class="range"><b class="orange">All time</b> · <span class="meta">Last 30 days · Last 7 days</span></p>
               <dl class="statrows">
                 {stats.rows.map(([k1, v1, k2, v2]) => (
@@ -185,11 +195,12 @@ const cells = Array.from({ length: 7 * COLS }, (_, i) => {
       <form class="cmdline" id="cmdform" autocomplete="off">
         <label for="cmd" class="chev" aria-label="command prompt">›</label>
         <span class="ghost" id="ghost" aria-hidden="true"></span>
-        <input id="cmd" name="cmd" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="" aria-describedby="cmd-hint" />
+        <span class="cursor" id="cursor" aria-hidden="true"></span>
+        <input id="cmd" name="cmd" type="text" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder=" " aria-describedby="cmd-hint" />
         <span class="hint" id="cmd-hint">/ for commands · ⇥ to complete</span>
       </form>
       <div class="statusbar">
-        <span><span class="mode">▶▶ {person.availability}</span> <span class="meta desk">(shift+tab to cycle) · esc to interrupt · ← 1 visitor</span></span>
+        <span class="left"><span class="mode"><span aria-hidden="true">▶▶ </span><span class="full">{person.availability}</span><span class="short">{person.availabilityShort}</span></span> <span class="meta desk">(shift+tab to cycle) · esc to interrupt · ← 1 visitor</span></span>
         <span class="meta">/portfolio</span>
       </div>
       <button class="skip" id="skip" type="button" hidden>press any key to skip ↵</button>
