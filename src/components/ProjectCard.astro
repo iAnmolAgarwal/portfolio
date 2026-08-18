@@ -1,0 +1,29 @@
+---
+import type { Project } from '../data/portfolio';
+const { p } = Astro.props as { p: Project };
+const host = (u: string) => u.replace(/^https?:\/\/(www\.)?/, '');
+---
+
+<article class="proj pending" id={`p-${p.slug}`} data-stream>
+  <div class="tool">
+    <span class="bullet" aria-hidden="true">●</span>
+    <span><span class="name">Read({p.title})</span> <span class="one">— {p.oneLiner}</span></span>
+  </div>
+  <div class="status">{p.status}</div>
+  <div class="card">
+    <p class="summary">{p.summary}</p>
+    <div class="flags" aria-label="stack">{p.flags.map((f) => <span class="flag">{f}</span>)}</div>
+    {(p.repo || p.extra) && (
+      <div class="links">
+        {p.repo && <a href={p.repo} target="_blank" rel="noopener">{host(p.repo)}</a>}
+        {p.extra?.map((e) => <a href={e.href} target="_blank" rel="noopener">{e.label}</a>)}
+      </div>
+    )}
+    {p.highlights.length > 0 && (
+      <details class="more">
+        <summary>+{p.highlights.length} lines (click to expand)</summary>
+        <ul class="bullets">{p.highlights.map((h) => <li>{h}</li>)}</ul>
+      </details>
+    )}
+  </div>
+</article>

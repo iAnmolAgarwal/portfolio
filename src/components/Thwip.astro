@@ -1,0 +1,76 @@
+---
+// Thwip — an original pixel jumping-spider mascot. 16×12 grid, rendered as
+// inline SVG so it's crisp at any size and needs no JS to appear.
+// . empty  o orange  d dark orange (web lines)  w face  k eye
+const ART = [
+  '................',
+  '......dood......',
+  '.....odoodo.....',
+  '....ododdodo....',
+  '.....oddddo.....',
+  '......oooo......',
+  '.....owwwwo.....',
+  '.....wkwwkw.....',
+  '...o.owwwwo.o...',
+  '..o.o.oooo.o.o..',
+  '.o.o..o..o..o.o.',
+  'o..o.o....o.o..o',
+];
+const COLOR: Record<string, string> = { o: '#d97757', d: '#b45e3e', w: '#eceae4', k: '#191817' };
+type Px = { x: number; y: number; c: string; kind: 'body' | 'eye' | 'legL' | 'legR' };
+const px: Px[] = [];
+ART.forEach((row, y) =>
+  [...row].forEach((ch, x) => {
+    if (ch === '.') return;
+    const legs = y >= 8 && (x <= 4 || x >= 11);
+    px.push({ x, y, c: COLOR[ch], kind: ch === 'k' ? 'eye' : legs ? (x < 8 ? 'legL' : 'legR') : 'body' });
+  }),
+);
+---
+
+<div class="thwip" id="thwip" data-state="idle" aria-hidden="true">
+  <div class="thread"></div>
+  <svg class="sprite" viewBox="0 0 16 12" shape-rendering="crispEdges">
+    <g class="legL">{px.filter((p) => p.kind === 'legL').map((p) => <rect x={p.x} y={p.y} width="1" height="1" fill={p.c} />)}</g>
+    <g class="legR">{px.filter((p) => p.kind === 'legR').map((p) => <rect x={p.x} y={p.y} width="1" height="1" fill={p.c} />)}</g>
+    <g class="body">{px.filter((p) => p.kind === 'body').map((p) => <rect x={p.x} y={p.y} width="1" height="1" fill={p.c} />)}</g>
+    <g class="eyes">{px.filter((p) => p.kind === 'eye').map((p) => <rect x={p.x} y={p.y} width="1" height="1" fill={p.c} />)}</g>
+  </svg>
+  <span class="tick">✓</span>
+</div>
+
+<style>
+  .thwip {
+    --size: 64px; --thread: 72px;
+    position: absolute; top: 0; right: 14%; width: 0; z-index: 3;
+    transform-origin: top center;
+    animation: sway 3.8s ease-in-out infinite;
+    transition: translate 600ms cubic-bezier(.34,1.4,.64,1);
+  }
+  .thread { width: 1px; height: var(--thread); margin: 0 auto; background: linear-gradient(var(--muted), #5a5751); }
+  .sprite { display: block; width: var(--size); height: calc(var(--size) * .75); margin-left: calc(var(--size) / -2); overflow: visible; }
+  .tick { position: absolute; left: calc(var(--size) / 2 + 4px); top: calc(var(--thread) + var(--size) * .3); color: var(--ok); opacity: 0; font-size: 13px; }
+
+  @keyframes sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+  .legL, .legR { animation: legs .6s steps(2) infinite; }
+  .legR { animation-delay: .3s; }
+  @keyframes legs { 50% { transform: translateY(-.5px); } }
+  .eyes { transform-origin: 8px 7.5px; animation: blink 4.6s steps(1) infinite; }
+  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95%, 98% { transform: scaleY(.15); } }
+
+  /* states */
+  .thwip[data-state='thinking'] .legL, .thwip[data-state='thinking'] .legR { animation-duration: .16s; }
+  .thwip[data-state='thinking'] { animation-duration: 1.4s; }
+  .thwip[data-state='done'] { animation: sway 3.8s ease-in-out infinite, drop .7s ease-out; }
+  .thwip[data-state='done'] .tick { animation: tick 1.6s ease-out; }
+  @keyframes drop { 0% { translate: 0 0; } 40% { translate: 0 12px; } 70% { translate: 0 -3px; } 100% { translate: 0 0; } }
+  @keyframes tick { 0% { opacity: 0; translate: 0 4px; } 20%, 70% { opacity: 1; translate: 0 0; } 100% { opacity: 0; } }
+  .thwip[data-state='error'] .sprite { transform: rotate(180deg); transform-origin: 50% 50%; transition: transform .35s; }
+  .thwip[data-state='error'] .legL, .thwip[data-state='error'] .legR { animation: none; }
+  .thwip[data-state='hidden'] { translate: 0 calc(-1 * var(--thread) - var(--size)); }
+
+  @media (max-width: 640px) { .thwip { right: 12%; --size: 44px; --thread: 52px; } }
+  @media (prefers-reduced-motion: reduce) {
+    .thwip, .legL, .legR, .eyes, .thwip[data-state='done'], .thwip[data-state='done'] .tick { animation: none; }
+  }
+</style>
