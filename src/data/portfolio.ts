@@ -232,7 +232,7 @@ export const stats = {
   streakDays: 275,
   rows: [
     ['Codeforces', 'Specialist', 'Solving streak', '275 days'],
-    ['Problems solved', '3,000+', 'Orchestrate', '#6 of 3,062'],
+    ['Problems solved', '3,000+', 'HackerRank Orchestrate', '#6 of 3,062'],
     ['HCLTech AMPLIfied', '#1 of 4,500+', 'KIET CODE RUSH 3.0', '1st place'],
   ] as [string, string, string, string][],
   footnote: 'Codeforces + CodeChef · figures from the résumé, Sep 2026',
