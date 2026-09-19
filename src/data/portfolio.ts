@@ -6,7 +6,7 @@ export const person = {
   name: 'Anmol Agarwal',
   handle: 'anmol@portfolio',
   tagline:
-    'Third-year CS student at JIIT Noida. I like to compete and develop solutions in hackathons. Competitive programmer (C++).',
+    'Third-year CS student at JIIT Noida. I like to compete and develop solutions in hackathons. Competitive Programmer (C++).',
   lede:
     'is a third-year CS student at JIIT Noida. He likes to compete and develop solutions in hackathons, and is a competitive programmer (C++).',
   now: 'Student Placement Coordinator at JIIT since Aug 2026; most recent result #6 of 3,062 at HackerRank Orchestrate (Sep 2026).',
@@ -107,8 +107,11 @@ export const projects: Project[] = [
     title: 'thwip',
     oneLiner: 'browser game: swing through a procedurally generated comic-book city',
     summary:
-      'A city that is drawn, not downloaded — the meshes, textures and sounds are all generated in code.',
-    highlights: [],
+      'Swing between the towers of a procedurally generated comic-book city on two ropes, in 90-second runs. The meshes, textures and sounds are generated in code; the repo ships no art or audio files for the game.',
+    highlights: [
+      'Ranking up raises the animation rate from 12 fps to 24 fps while the camera stays smooth — two clocks, one for motion and one for poses.',
+      'The city is seeded: the same seed builds the same city on every machine.',
+    ],
     flags: ['--typescript', '--threejs', '--webgl'],
     status: 'playable',
     repo: 'https://github.com/iAnmolAgarwal/thwip',
@@ -157,7 +160,7 @@ export const projects: Project[] = [
       'Resolved an ESP32 ADC2/Wi-Fi conflict by remapping every sensor to ADC1.',
       'Manuscript under review at Sensors and Actuators Reports (Elsevier).',
     ],
-    flags: ['--cpp', '--esp32', '--iot', '--gas-sensors'],
+    flags: ['--c++', '--esp32', '--iot', '--gas-sensors'],
     status: 'prototype · demoed end-to-end',
     repo: 'https://github.com/iAnmolAgarwal/smart-e-nose',
     extra: [{ label: 'hardware demo (YouTube)', href: 'https://youtu.be/VxRDWAj1pcQ' }],
@@ -188,11 +191,15 @@ export const education = {
   ],
 };
 
+// Practice only — contest results live in `achievements`, not here.
 export const cp = [
   'Codeforces Specialist — 275-day solving streak.',
   '3,000+ problems solved across Codeforces and CodeChef.',
-  'IICPC: top 16% of 13,800 registered at an offline international contest with candidates from IITs and NITs.',
-  'KIET CODE RUSH 3.0: 1st place at an offline inter-college programming contest (530+ registrations).',
+];
+
+export const cpLinks = [
+  { label: 'codeforces.com/profile/i_anmolagarwal', href: 'https://codeforces.com/profile/i_anmolagarwal' },
+  { label: 'codechef.com/users/i_anmolagarwal', href: 'https://www.codechef.com/users/i_anmolagarwal' },
 ];
 
 export const stack = {
@@ -225,8 +232,8 @@ export const stats = {
   streakDays: 275,
   rows: [
     ['Codeforces', 'Specialist', 'Solving streak', '275 days'],
-    ['Problems solved', '3,000+', 'KIET CODE RUSH 3.0', '1st place'],
-    ['IICPC', 'top 16% of 13,800', 'HCLTech AMPLIfied', '#1 of 4,500+'],
+    ['Problems solved', '3,000+', 'Orchestrate', '#6 of 3,062'],
+    ['HCLTech AMPLIfied', '#1 of 4,500+', 'KIET CODE RUSH 3.0', '1st place'],
   ] as [string, string, string, string][],
   footnote: 'Codeforces + CodeChef · figures from the résumé, Sep 2026',
   quip: '275 days ≈ 39.3 weeks of not missing a single day.',

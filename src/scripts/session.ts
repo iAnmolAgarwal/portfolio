@@ -18,6 +18,10 @@ let userScrolled = false;
 let running = false;
 let startedAt = 0;
 let onKey: ((e: KeyboardEvent) => void) | null = null;
+// Every run() gets a generation id. /clear can start a new run while the old
+// one is parked in an await; the old one checks its id at each resume point and
+// returns silently, so only the newest run touches the DOM or calls finish().
+let runId = 0;
 
 export function startSession() {
   items = [...document.querySelectorAll<HTMLElement>('[data-stream]')];
@@ -34,6 +38,8 @@ export function startSession() {
 }
 
 async function run() {
+  const myId = ++runId;
+  const current = () => myId === runId;
   running = true;
   skipped = false;
   userScrolled = false;
@@ -48,8 +54,11 @@ async function run() {
 
   // "press any key to skip" — but typing a command in the prompt is not a skip,
   // so ignore keys aimed at the command line and keep listening for a real one.
+  // Escape is the exception: finish() focuses the prompt, so on a replay it is
+  // the only key the visitor can still reach the skip with.
+  if (onKey) window.removeEventListener('keydown', onKey); // a previous run's, if any
   onKey = (e: KeyboardEvent) => {
-    if ((e.target as HTMLElement | null)?.closest?.('#cmdform')) return;
+    if ((e.target as HTMLElement | null)?.closest?.('#cmdform') && e.key !== 'Escape') return;
     skip();
   };
   window.addEventListener('keydown', onKey);
@@ -61,10 +70,12 @@ async function run() {
   typed.classList.add('caret');
   await sleep(500);
   for (const ch of cmd) {
+    if (!current()) return; // superseded — leave the line to the new run
     if (skipped) break;
     typed.textContent += ch;
     await sleep(ch === ' ' ? jitter(90, 60) : jitter(38, 55));
   }
+  if (!current()) return;
   typed.classList.remove('caret');
   if (skipped) return finish();
 
@@ -79,7 +90,7 @@ async function run() {
   const t0 = performance.now();
   let word = 0;
   const thinkFor = 1600;
-  while (performance.now() - t0 < thinkFor && !skipped) {
+  while (performance.now() - t0 < thinkFor && !skipped && current()) {
     const el = (performance.now() - t0) / 1000;
     if (Math.floor(el / 0.7) !== word) word = Math.floor(el / 0.7);
     thinkWord.textContent = `${WORDS[word % WORDS.length]}…`;
@@ -87,15 +98,17 @@ async function run() {
     thinkMeta.textContent = `(${el.toFixed(1)}s · ↓ ${toks >= 1000 ? (toks / 1000).toFixed(1) + 'k' : toks} tokens · thinking with high effort)`;
     await sleep(100);
   }
+  if (!current()) return;
   if (skipped) return finish();
 
   // 3. stream: tools, then the typed lede, then everything else
   for (const el of items) {
+    if (!current()) return;
     if (skipped) break;
     if (el.dataset.type !== undefined) {
       think.hidden = true;
       spark.classList.remove('spin');
-      await typeInto(el);
+      await typeInto(el, myId);
       continue;
     }
     reveal(el);
@@ -104,6 +117,7 @@ async function run() {
     const pace = el.dataset.pace === 'fast' ? jitter(110, 70) : Math.min(170, 30 + len * 1.2);
     await sleep(pace);
   }
+  if (!current()) return;
   finish();
 }
 
@@ -113,7 +127,7 @@ function reveal(el: HTMLElement) {
   if (!userScrolled) el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 }
 
-async function typeInto(el: HTMLElement) {
+async function typeInto(el: HTMLElement, myId: number) {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   const nodes: { node: Text; full: string }[] = [];
   let n: Node | null;
@@ -129,11 +143,13 @@ async function typeInto(el: HTMLElement) {
     // stream in small chunks like a model, not one keystroke at a time
     let i = 0;
     while (i < full.length && !skipped) {
+      if (myId !== runId) return; // superseded — the new run owns these nodes now
       const step = 2 + Math.floor(Math.random() * 3);
       i = Math.min(full.length, i + step);
       node.data = full.slice(0, i);
       await sleep(jitter(9, 11));
     }
+    if (myId !== runId) return;
     if (skipped) node.data = full;
   }
   caretHost.classList.remove('caret');

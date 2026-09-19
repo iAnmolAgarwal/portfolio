@@ -3,11 +3,12 @@ import '@fontsource-variable/jetbrains-mono';
 import '../styles/global.css';
 import Thwip from '../components/Thwip.astro';
 import ProjectCard from '../components/ProjectCard.astro';
-import { person, achievements, projects, experience, education, cp, stack, howIBuild, stats, links, commands, whatsNew } from '../data/portfolio';
+import { person, achievements, projects, experience, education, cp, cpLinks, stack, howIBuild, stats, links, commands, whatsNew } from '../data/portfolio';
 
 const BOOT_CMD = 'tell me about anmol agarwal';
-const title = 'Anmol Agarwal — CS student at JIIT Noida · hackathons, AI agents, competitive programming';
+const title = 'Anmol Agarwal — CS student, JIIT Noida · hackathons & CP';
 const description = person.tagline;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://anmolagarwal.vercel.app').href;
 
 // 7 rows × 52 columns = 364 cells; the trailing stats.streakDays of them
 // (column-major, like a calendar) are filled.
@@ -40,6 +41,8 @@ for (let c = 0; c < COLS; c++) {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <script is:inline>document.documentElement.classList.add('js');</script>
   </head>
@@ -133,6 +136,7 @@ for (let c = 0; c < COLS; c++) {
           <section class="section" id="cp" aria-labelledby="h-cp">
             <h2 class="h pending" id="h-cp" data-stream>competitive programming <span class="cmd">/cp</span></h2>
             <ul class="bullets">{cp.map((l) => <li class="pending" data-stream>{l}</li>)}</ul>
+            <div class="links pending" data-stream>{cpLinks.map((l) => <a href={l.href} target="_blank" rel="noopener">{l.label}</a>)}</div>
           </section>
 
           <section class="section" id="stack" aria-labelledby="h-stack">
@@ -187,7 +191,7 @@ for (let c = 0; c < COLS; c++) {
           </section>
 
           <div class="worked pending" data-stream><span class="spark" aria-hidden="true">✻</span><span id="worked-text">Worked for 4s</span></div>
-          <div class="recap pending" data-stream>※ recap: builds things that must not fail silently. <b>{person.availability}</b>.</div>
+          <div class="recap pending" data-stream>※ recap: #1 at HCLTech AMPLIfied · #6 of 3,062 at HackerRank Orchestrate · Codeforces Specialist. <b>{person.availability}</b>.</div>
         </div>
 
         <div class="log" id="log" aria-live="polite"></div>
