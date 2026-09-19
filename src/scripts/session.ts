@@ -17,6 +17,7 @@ let skipped = false;
 let userScrolled = false;
 let running = false;
 let startedAt = 0;
+let onKey: ((e: KeyboardEvent) => void) | null = null;
 
 export function startSession() {
   items = [...document.querySelectorAll<HTMLElement>('[data-stream]')];
@@ -45,8 +46,13 @@ async function run() {
   const skipBtn = $('skip');
   const cmd = typed.dataset.cmd ?? typed.textContent ?? '';
 
-  const onKey = () => skip();
-  window.addEventListener('keydown', onKey, { once: true });
+  // "press any key to skip" — but typing a command in the prompt is not a skip,
+  // so ignore keys aimed at the command line and keep listening for a real one.
+  onKey = (e: KeyboardEvent) => {
+    if ((e.target as HTMLElement | null)?.closest?.('#cmdform')) return;
+    skip();
+  };
+  window.addEventListener('keydown', onKey);
   skipBtn.hidden = false;
   skipBtn.onclick = skip;
 
@@ -65,6 +71,10 @@ async function run() {
   // 2. think
   think.hidden = false;
   spark.classList.add('spin');
+  // the spinner line itself is aria-hidden (it is rewritten ten times a second);
+  // screen readers get one announcement instead.
+  const live = $('think-live');
+  if (live) live.textContent = 'Thinking…';
   thwip('thinking');
   const t0 = performance.now();
   let word = 0;
@@ -159,6 +169,9 @@ function restoreText(el: HTMLElement) {
 
 function finish() {
   running = false;
+  if (onKey) { window.removeEventListener('keydown', onKey); onKey = null; }
+  const live = document.getElementById('think-live');
+  if (live) live.textContent = '';
   $('palette')?.classList.remove('pending');
   const secs = Math.max(1, Math.round((performance.now() - startedAt) / 1000));
   const w = $('worked-text');
@@ -173,6 +186,7 @@ function finish() {
 
 const SECTIONS: Record<string, string> = {
   '/whoami': 'whoami',
+  '/achievements': 'achievements',
   '/projects': 'projects',
   '/experience': 'experience',
   '/cp': 'cp',
@@ -183,6 +197,7 @@ const SECTIONS: Record<string, string> = {
 const HELP: [string, string][] = [
   ['/help', 'list commands'],
   ['/whoami', 'the short version'],
+  ['/achievements', 'contests, research, leadership'],
   ['/projects', 'what I have built'],
   ['/experience', 'internship + education'],
   ['/cp', 'competitive programming'],
@@ -249,7 +264,7 @@ function runCommand(raw: string) {
   log(`<span class="chev" aria-hidden="true">›</span><span>${escapeHtml(v)}</span>`, 'sent');
 
   if (v === '/help') {
-    log(HELP.map(([n, d]) => `  <span class="accent">${n.padEnd(12, ' ')}</span><span class="meta">${d}</span>`).join('\n'), 'line');
+    log(HELP.map(([n, d]) => `  <span class="accent">${n.padEnd(15, ' ')}</span><span class="meta">${d}</span>`).join('\n'), 'line');
     pulse('done');
     return;
   }

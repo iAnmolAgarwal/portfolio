@@ -1,6 +1,6 @@
 # anmol@portfolio
 
-Live: https://portfolio-cli-eta.vercel.app
+Live: https://anmolagarwal.vercel.app
 
 Personal site styled as a Claude Code terminal session: the page types
 `claude "who is anmol agarwal"`, thinks, and streams the answer — which is the

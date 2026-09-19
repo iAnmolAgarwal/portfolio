@@ -3,18 +3,19 @@ import '@fontsource-variable/jetbrains-mono';
 import '../styles/global.css';
 import Thwip from '../components/Thwip.astro';
 import ProjectCard from '../components/ProjectCard.astro';
-import { person, projects, experience, education, cp, stack, stats, links, commands, whatsNew } from '../data/portfolio';
+import { person, achievements, projects, experience, education, cp, stack, howIBuild, stats, links, commands, whatsNew } from '../data/portfolio';
 
 const BOOT_CMD = 'tell me about anmol agarwal';
-const title = 'Anmol Agarwal — CS undergrad · trading systems, AI agents, embedded';
+const title = 'Anmol Agarwal — CS student at JIIT Noida · hackathons, AI agents, competitive programming';
 const description = person.tagline;
 
-// 7 rows × 35 columns = 245 cells; the first 242 (column-major, like a calendar) are filled.
+// 7 rows × 52 columns = 364 cells; the trailing stats.streakDays of them
+// (column-major, like a calendar) are filled.
 const COLS = 52;
 const TOTAL = 7 * COLS;
 // column-major (calendar) index; the streak is the trailing block, empty days lead in as dim dots
 const cells = Array.from({ length: TOTAL }, (_, i) => i >= TOTAL - stats.streakDays);
-// month labels: the grid ends today (the streak is current), so walk back 35 weeks
+// month labels: the grid ends today (the streak is current), so walk back COLS weeks
 const today = new Date();
 const start = new Date(today); start.setDate(today.getDate() - (7 * COLS - 1));
 const months: { label: string; col: number }[] = [];
@@ -76,10 +77,11 @@ for (let c = 0; c < COLS; c++) {
         </div>
 
         <!-- 4. spinner (JS-only) -->
-        <div class="think" id="think" hidden aria-live="polite">
-          <div><span class="spark" id="spark" aria-hidden="true">✻</span><span class="word" id="think-word">Noodling…</span> <span class="meta" id="think-meta">(0.0s · ↓ 0 tokens · thinking with high effort)</span></div>
+        <div class="think" id="think" hidden>
+          <div aria-hidden="true"><span class="spark" id="spark">✻</span><span class="word" id="think-word">Noodling…</span> <span class="meta" id="think-meta">(0.0s · ↓ 0 tokens · thinking with high effort)</span></div>
           <div class="result">Tip: any key skips the boot; <code>/help</code> lists commands</div>
         </div>
+        <p class="sr-only" id="think-live" aria-live="polite"></p>
 
         <!-- 5. response -->
         <div class="answer" id="answer">
@@ -94,8 +96,13 @@ for (let c = 0; c < COLS; c++) {
               <p class="meta">Now: {person.now}</p>
             </div>
           </div>
-          <p class="pending summary" data-stream data-pace="fast">Read <b>2</b> files, listed <b>1</b> directory, ran <b>0</b> shell commands</p>
+          <p class="pending summary" data-stream data-pace="fast">Read <b>1</b> file, listed <b>1</b> directory, ran <b>0</b> shell commands</p>
           <div class="msg pending" data-stream style="margin-top:14px"><span class="bullet" aria-hidden="true">●</span><p>Here's the full picture:</p></div>
+
+          <section class="section" id="achievements" aria-labelledby="h-achievements">
+            <h2 class="h pending" id="h-achievements" data-stream>achievements <span class="cmd">/achievements</span></h2>
+            <ul class="bullets">{achievements.map((a) => <li class="pending" data-stream><span><strong>{a.label}:</strong> {a.text}</span></li>)}</ul>
+          </section>
 
           <section class="section" id="projects" aria-labelledby="h-projects">
             <h2 class="h pending" id="h-projects" data-stream>projects <span class="cmd">/projects</span></h2>
@@ -138,6 +145,7 @@ for (let c = 0; c < COLS; c++) {
                 </>
               ))}
             </dl>
+            <p class="pending meta" data-stream style="margin-top:10px">how I build: {howIBuild}</p>
           </section>
 
           <section class="section" id="stats" aria-labelledby="h-stats">
@@ -150,7 +158,7 @@ for (let c = 0; c < COLS; c++) {
                 <div class="rows"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
                 <div class="grid" style={`--cols:${COLS}`}>{cells.map((on) => <i class={on ? 'on' : ''}></i>)}</div>
               </div>
-              <p class="legend"><span class="meta">Less</span> <i class="lg"></i><i class="lg on"></i> <span class="meta">More</span> <span class="meta">· every cell = one day solved · {stats.streakDays} and counting</span></p>
+              <p class="legend"><span class="meta">Less</span> <i class="lg"></i><i class="lg on"></i> <span class="meta">More</span> <span class="meta">· every cell = one day solved · {stats.streakDays} days</span></p>
               <p class="range"><b class="orange">All time</b> · <span class="meta">Last 30 days · Last 7 days</span></p>
               <dl class="statrows">
                 {stats.rows.map(([k1, v1, k2, v2]) => (
