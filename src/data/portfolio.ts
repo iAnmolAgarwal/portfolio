@@ -9,7 +9,7 @@ export const person = {
     'Third-year CS student at JIIT Noida. I like to compete and develop solutions in hackathons. Competitive Programmer (C++).',
   lede:
     'is a third-year CS student at JIIT Noida. He likes to compete and develop solutions in hackathons, and is a competitive programmer (C++).',
-  now: 'Student Placement Coordinator at JIIT since Aug 2026; most recent result #6 of 3,062 at HackerRank Orchestrate (Sep 2026).',
+  now: 'Student Placement Coordinator at JIIT since Aug 2026; most recent result #6 of 3,062 (top 0.2%) at HackerRank Orchestrate (Sep 2026).',
   location: 'Noida, India',
   availability: 'open to internships (summer 2027)',
   availabilityShort: 'open to internships',
@@ -26,11 +26,11 @@ export const achievements: Achievement[] = [
   },
   {
     label: 'HackerRank Orchestrate (24-hour global hackathon)',
-    text: '#6 of 3,062 worldwide (top 0.2%) in September 2026, after #63 of 1,773 in June and #63 of 1,983 in August.',
+    text: '#6 of 3,062 worldwide (top 0.2%) in September 2026, after #63 of 1,773 (top 3.6%) in June and #63 of 1,983 (top 3.2%) in August.',
   },
   {
     label: 'Amazon ML Challenge 2026',
-    text: '#66 out of 10,000+ submissions. Led Team Apprentice (four members) through a 72-hour business entity-resolution problem; public leaderboard macro F0.5 0.9902.',
+    text: '#66 out of 10,000+ submissions (top 0.7%). Led Team Apprentice (four members) through a 72-hour business entity-resolution problem; public leaderboard macro F0.5 0.9902.',
   },
   {
     label: 'KIET CODE RUSH 3.0',
@@ -84,7 +84,7 @@ export const projects: Project[] = [
     title: 'Buy or Wait?',
     oneLiner: 'affordability agent that answers "can I afford this?"',
     summary:
-      'Answers "can I afford this?" from bank history, receipts and chat messages — the model only reads the documents; every amount, date and payment plan is computed in plain Python. #6 of 3,062 at HackerRank Orchestrate (September 2026, a 24-hour hackathon).',
+      'Answers "can I afford this?" from bank history, receipts and chat messages — the model only reads the documents; every amount, date and payment plan is computed in plain Python. #6 of 3,062 (top 0.2%) at HackerRank Orchestrate (September 2026, a 24-hour hackathon).',
     highlights: [
       'Built in 2h22m: the contract first, then eight Claude subagents directed against it.',
       'All 250 requests answered for $0.0139 each, with zero fallbacks or refused rows.',
@@ -98,7 +98,7 @@ export const projects: Project[] = [
     title: 'business-entity-resolution',
     oneLiner: 'matches the same business across messy data sources (Amazon ML Challenge 2026)',
     summary:
-      'For each of 1.73M businesses, find every record in a pool of ~10M that is the same real business, despite typos, aliases, Indic-script names and missing addresses. #66 out of 10,000+ submissions; team leader, Team Apprentice.',
+      'For each of 1.73M businesses, find every record in a pool of ~10M that is the same real business, despite typos, aliases, Indic-script names and missing addresses. #66 out of 10,000+ submissions (top 0.7%); team leader, Team Apprentice.',
     highlights: [
       'Worked out how the fake look-alike records were made (house number shifted by one of ten fixed steps, one extra word, a swapped legal form) and turned that into features that need no labels.',
       'Measured without labels that the test set had about twice as many look-alikes as training, and threw out any change that won cross-validation but added extra matches on test.',
@@ -141,7 +141,7 @@ export const projects: Project[] = [
     title: 'damage-claim-agent',
     oneLiner: 'vision-language agent that verifies damage claims from photos',
     summary:
-      'Solo submission to the HackerRank Orchestrate 24-hour AI-agent hackathon (June 2026) — #63 of 1,773. Two stages: a vision model reports structured findings, blind to the user’s claim history, and plain Python rules produce the verdict.',
+      'Solo submission to the HackerRank Orchestrate 24-hour AI-agent hackathon (June 2026) — #63 of 1,773 (top 3.6%). Two stages: a vision model reports structured findings, blind to the user’s claim history, and plain Python rules produce the verdict.',
     highlights: [
       'Images the model flags as carrying planted text are struck from the cited evidence.',
       'Reused-photo fraud caught with a perceptual hash (dhash).',
@@ -242,8 +242,8 @@ export const links = [
 ];
 
 export const whatsNew = [
-  '#66 at Amazon ML Challenge 2026, out of 10,000+ submissions.',
-  'buy-or-wait placed #6 of 3,062 at HackerRank Orchestrate (Sep 2026).',
+  '#66 at Amazon ML Challenge 2026, out of 10,000+ submissions (top 0.7%).',
+  'buy-or-wait placed #6 of 3,062 (top 0.2%) at HackerRank Orchestrate (Sep 2026).',
   'pathwise won HCLTech AMPLIfied — #1 overall among 4,500+ participants.',
 ];
 
