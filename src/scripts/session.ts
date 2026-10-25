@@ -213,7 +213,7 @@ const SECTIONS: Record<string, string> = {
 const HELP: [string, string][] = [
   ['/help', 'list commands'],
   ['/whoami', 'the short version'],
-  ['/achievements', 'contests, research, leadership'],
+  ['/achievements', 'contests and leadership'],
   ['/projects', 'what I have built'],
   ['/experience', 'internship + education'],
   ['/cp', 'competitive programming'],

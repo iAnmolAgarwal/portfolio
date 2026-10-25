@@ -41,10 +41,6 @@ export const achievements: Achievement[] = [
     text: 'Top 16% of 13,800 registered at an offline international contest with candidates from IITs and NITs.',
   },
   {
-    label: 'Research',
-    text: 'Co-authored a manuscript on a low-cost IoT gas-sensor array for food-spoilage monitoring, under review at Sensors and Actuators Reports (Elsevier); wrote the C++ sensor firmware.',
-  },
-  {
     label: 'Leadership & certifications',
     text: 'Student Placement Coordinator, JIIT (Aug 2026 – present); Anthropic Claude Code 101.',
   },
@@ -177,7 +173,6 @@ export const projects: Project[] = [
       '~920-line ESP32 firmware structured as a five-state sampling machine (IDLE → SEAL → MEASURE → PURGE → REFERENCE) with automatic baseline recalibration.',
       'Three cloud services — Blynk dashboard, ThingSpeak archive, Telegram alerts.',
       'Resolved an ESP32 ADC2/Wi-Fi conflict by remapping every sensor to ADC1.',
-      'Manuscript under review at Sensors and Actuators Reports (Elsevier).',
     ],
     flags: ['--c++', '--esp32', '--iot', '--gas-sensors'],
     status: 'prototype · demoed end-to-end',
@@ -261,7 +256,7 @@ export const stats = {
 export const commands = [
   { name: '/help', desc: 'list commands' },
   { name: '/whoami', desc: 'the short version' },
-  { name: '/achievements', desc: 'contests, research, leadership' },
+  { name: '/achievements', desc: 'contests and leadership' },
   { name: '/projects', desc: 'what I have built' },
   { name: '/experience', desc: 'internship + education' },
   { name: '/cp', desc: 'competitive programming' },
