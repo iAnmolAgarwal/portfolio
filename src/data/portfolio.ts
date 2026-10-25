@@ -30,7 +30,7 @@ export const achievements: Achievement[] = [
   },
   {
     label: 'Amazon ML Challenge 2026',
-    text: '#66 out of 10,000+ submissions (top 0.7%). Led Team Apprentice (four members) through a 72-hour business entity-resolution problem; public leaderboard macro F0.5 0.9902.',
+    text: '#66 out of 10,000+ submissions (top 0.7%). Led Team Apprentice through a 72-hour business entity-resolution problem; public leaderboard macro F0.5 0.9902.',
   },
   {
     label: 'KIET CODE RUSH 3.0',
