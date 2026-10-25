@@ -29,6 +29,10 @@ export const achievements: Achievement[] = [
     text: '#6 of 3,062 worldwide (top 0.2%) in September 2026, after #63 of 1,773 in June and #63 of 1,983 in August.',
   },
   {
+    label: 'Amazon ML Challenge 2026',
+    text: '#66 out of 10,000+ submissions. Led Team Apprentice (four members) through a 72-hour business entity-resolution problem; public leaderboard macro F0.5 0.9902.',
+  },
+  {
     label: 'KIET CODE RUSH 3.0',
     text: '1st place at an offline inter-college programming contest (530+ registrations) — won a 32-team knockout and the top-3 final; prize INR 15,000.',
   },
@@ -88,6 +92,21 @@ export const projects: Project[] = [
     flags: ['--python', '--claude-api'],
     status: 'completed · hackathon',
     repo: 'https://github.com/iAnmolAgarwal/buy-or-wait',
+  },
+  {
+    slug: 'business-entity-resolution',
+    title: 'business-entity-resolution',
+    oneLiner: 'matches the same business across messy data sources (Amazon ML Challenge 2026)',
+    summary:
+      'For each of 1.73M businesses, find every record in a pool of ~10M that is the same real business, despite typos, aliases, Indic-script names and missing addresses. #66 out of 10,000+ submissions; team leader, Team Apprentice.',
+    highlights: [
+      'Worked out how the fake look-alike records were made (house number shifted by one of ten fixed steps, one extra word, a swapped legal form) and turned that into features that need no labels.',
+      'Measured without labels that the test set had about twice as many look-alikes as training, and threw out any change that won cross-validation but added extra matches on test.',
+      'France had no training labels (15% of test); its rules were set by training on one country and scoring the other.',
+    ],
+    flags: ['--python', '--lightgbm', '--multilingual-e5', '--entity-resolution'],
+    status: 'completed · ML challenge (Sep 2026)',
+    repo: 'https://github.com/iAnmolAgarwal/amazon-ml-challenge-2026',
   },
   {
     slug: 'jbites',
@@ -223,9 +242,9 @@ export const links = [
 ];
 
 export const whatsNew = [
+  '#66 at Amazon ML Challenge 2026, out of 10,000+ submissions.',
   'buy-or-wait placed #6 of 3,062 at HackerRank Orchestrate (Sep 2026).',
   'pathwise won HCLTech AMPLIfied — #1 overall among 4,500+ participants.',
-  '1st place at KIET CODE RUSH 3.0.',
 ];
 
 export const stats = {
