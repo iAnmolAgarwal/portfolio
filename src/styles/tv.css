@@ -76,6 +76,11 @@
   object-fit: cover;
 }
 
+/* Every channel's clip is stacked here. Only the one that is on shows. */
+.media video:not([data-on]) {
+  visibility: hidden;
+}
+
 /* Layers over the picture, all clear while the set is simply playing. */
 .static,
 .crt {
@@ -104,6 +109,12 @@
   letter-spacing: 0.06em;
   text-shadow: 0 0 calc(8 * var(--u)) rgba(120, 255, 140, 0.55);
   opacity: 0;
+  transition: opacity 0.25s;
+}
+
+/* The readout shows for a moment after each channel change. */
+.osd[data-on] {
+  opacity: 0.95;
 }
 
 /* ---------- the panel: channel dial, a second knob, the speaker ---------- */
@@ -199,6 +210,38 @@ html[data-channel='3'] {
   transform: none;
 }
 
+/*
+ * The channel dial is the one control on the set. It eases round to the channel
+ * that is on, except while it is being dragged, when it has to keep up with the
+ * pointer. A drag on it must not scroll or zoom the page instead.
+ */
+.knob[data-dial] {
+  cursor: grab;
+  touch-action: none;
+  transition:
+    transform 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
+    box-shadow 0.2s,
+    background 0.2s;
+}
+
+.knob[data-dial]:hover {
+  background: #fff;
+  box-shadow: 0 0 0 calc(5 * var(--u)) rgba(22, 22, 26, 0.07);
+}
+
+.knob[data-dial]:active {
+  cursor: grabbing;
+}
+
+.knob[data-dial][data-dragging] {
+  transition: none;
+}
+
+.knob[data-dial]:focus-visible {
+  outline: var(--line) solid var(--ink);
+  outline-offset: calc(4 * var(--u));
+}
+
 .grille {
   --slat-every: calc(8 * var(--u));
   flex: 1;
@@ -254,6 +297,15 @@ html[data-channel='3'] {
   width: calc(150 * var(--u));
   color: var(--ink);
   pointer-events: none;
+  transition:
+    opacity 0.8s ease,
+    visibility 0s linear 0.8s;
+}
+
+/* Once the visitor has turned the dial, the note has done its job. */
+html[data-touched] .hint {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .hint svg {

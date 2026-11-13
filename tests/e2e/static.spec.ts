@@ -84,7 +84,10 @@ test('is served already finished, on channel 1', async ({ page }) => {
 
 test('shows Studio on the screen and loads every picture', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('[data-screen] video')).toHaveAttribute('poster', '/media/studio.jpg');
+  await expect(page.locator('[data-screen] video[data-on]')).toHaveAttribute(
+    'poster',
+    '/media/studio.jpg',
+  );
 
   const pictures = page.locator('img');
   await expect(pictures).not.toHaveCount(0);
