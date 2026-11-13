@@ -76,6 +76,8 @@ const GLANCE_CELLS = 2;
 const LOOK_DOWN_CELLS = 1;
 /** The time the eyes take to cross one cell, and the pause they make on it. */
 const CELL_MS = 38;
+/** How long they rest looking to each side during the glance. */
+const GLANCE_HOLD_MS = 456;
 /** A cell is one sprite unit wide and two high. */
 const CELL = { x: 1, y: 2 };
 
@@ -168,80 +170,111 @@ export function beamSweep(
   };
 }
 
-// ---------- the eyes' keyframes ----------
+// ---------- the eyes' timeline ----------
 
-interface Gaze {
+export interface Gaze {
   /** Cells to the right of straight ahead. */
   x: number;
   /** Cells below straight ahead. */
   y: number;
 }
 
+/** Where the eyes are at one moment, with straight lines between moments. */
+export interface EyeCue {
+  /** Milliseconds from the start of the movement. */
+  at: number;
+  gaze: Gaze;
+  /** 1 open, 0.5 half shut in a blink. */
+  open: number;
+}
+
 const AHEAD: Gaze = { x: 0, y: 0 };
 
-/** The eyes looking somewhere, open (1) or half shut in a blink (0.5). */
-function look(gaze: Gaze, open = 1): Keyframe {
+/** Writes a movement of the eyes as cues, each step given by how long it takes. */
+function eyeScript(from: Gaze): {
+  cues: EyeCue[];
+  walk(to: Gaze): void;
+  hold(ms: number): void;
+  lids(open: number, ms: number): void;
+} {
+  const cues: EyeCue[] = [{ at: 0, gaze: from, open: 1 }];
+  const add = (ms: number, change: Partial<EyeCue>): void => {
+    const last = cues[cues.length - 1];
+    cues.push({ ...last, ...change, at: last.at + ms });
+  };
   return {
-    transform: `translate(${gaze.x * CELL.x}px, ${gaze.y * CELL.y}px) scaleY(${open})`,
+    cues,
+    /** Goes to a gaze one cell at a time, resting on each cell on the way. */
+    walk(to) {
+      const start = cues[cues.length - 1].gaze;
+      const cells = Math.max(Math.abs(to.x - start.x), Math.abs(to.y - start.y));
+      for (let cell = 1; cell <= cells; cell += 1) {
+        const gaze: Gaze = {
+          x: start.x + ((to.x - start.x) * cell) / cells,
+          y: start.y + ((to.y - start.y) * cell) / cells,
+        };
+        add(CELL_MS, { gaze });
+        if (cell < cells) add(CELL_MS, {});
+      }
+    },
+    hold(ms) {
+      add(ms, {});
+    },
+    lids(open, ms) {
+      add(ms, { open });
+    },
   };
 }
 
 /**
- * The eyes going from one gaze to another one cell at a time. The first frame is
- * at offset `at`; each cell takes `step` to cross and the eyes rest for `step`
- * on each cell in between.
+ * A glance left, a glance right, then straight at the visitor and two blinks.
+ * The eyes rest on each side for as long as in the approved drawing however many
+ * cells they travel; a longer walk makes the whole glance longer.
  */
-function walk(from: Gaze, to: Gaze, at: number, step: number): Keyframe[] {
-  const cells = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
-  const frames: Keyframe[] = [{ ...look(from), offset: at }];
-  for (let cell = 1; cell <= cells; cell += 1) {
-    const here: Gaze = {
-      x: from.x + ((to.x - from.x) * cell) / cells,
-      y: from.y + ((to.y - from.y) * cell) / cells,
-    };
-    frames.push({ ...look(here), offset: at + (2 * cell - 1) * step });
-    if (cell < cells) frames.push({ ...look(here), offset: at + 2 * cell * step });
-  }
-  return frames;
+export function glanceCues(cells: number = GLANCE_CELLS): EyeCue[] {
+  const eyes = eyeScript(AHEAD);
+  eyes.walk({ x: -cells, y: 0 });
+  eyes.hold(GLANCE_HOLD_MS);
+  eyes.walk({ x: cells, y: 0 });
+  eyes.hold(GLANCE_HOLD_MS);
+  eyes.walk(AHEAD);
+  eyes.hold(342);
+  eyes.lids(0.5, 38);
+  eyes.hold(114);
+  eyes.lids(1, 38);
+  eyes.hold(152);
+  eyes.lids(0.5, 38);
+  eyes.hold(95);
+  eyes.lids(1, 57);
+  return eyes.cues;
 }
 
-/** A walk as an animation of its own: its frames, and how long they take. */
-function turn(from: Gaze, to: Gaze): { frames: Keyframe[]; duration: number } {
-  const cells = Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y));
-  const steps = Math.max(1, 2 * cells - 1);
-  return { frames: walk(from, to, 0, 1 / steps), duration: steps * CELL_MS };
-}
-
-const GLANCE_MS = 1900;
-
-/** A glance left, a glance right, then straight at the visitor and two blinks. */
-function glance(): Keyframe[] {
-  const left: Gaze = { x: -GLANCE_CELLS, y: 0 };
-  const right: Gaze = { x: GLANCE_CELLS, y: 0 };
-  const step = CELL_MS / GLANCE_MS;
-  return [
-    ...walk(AHEAD, left, 0, step),
-    ...walk(left, right, 0.26, step),
-    ...walk(right, AHEAD, 0.52, step),
-    { ...look(AHEAD), offset: 0.72 },
-    { ...look(AHEAD, 0.5), offset: 0.74 },
-    { ...look(AHEAD, 0.5), offset: 0.8 },
-    { ...look(AHEAD), offset: 0.82 },
-    { ...look(AHEAD), offset: 0.9 },
-    { ...look(AHEAD, 0.5), offset: 0.92 },
-    { ...look(AHEAD, 0.5), offset: 0.97 },
-    { ...look(AHEAD), offset: 1 },
-  ];
+/** The eyes going from one gaze to another, a cell at a time. */
+function turnCues(from: Gaze, to: Gaze): EyeCue[] {
+  const eyes = eyeScript(from);
+  eyes.walk(to);
+  return eyes.cues;
 }
 
 /** One slow blink. */
-function blink(): Keyframe[] {
-  return [
-    { ...look(AHEAD), offset: 0 },
-    { ...look(AHEAD, 0.5), offset: 0.05 },
-    { ...look(AHEAD, 0.5), offset: 0.7 },
-    { ...look(AHEAD), offset: 1 },
-  ];
+function blinkCues(): EyeCue[] {
+  const eyes = eyeScript(AHEAD);
+  eyes.lids(0.5, 12);
+  eyes.hold(156);
+  eyes.lids(1, 72);
+  return eyes.cues;
+}
+
+/** Cues as an animation: its keyframes and how long it runs. */
+function eyeAnimation(cues: EyeCue[]): { frames: Keyframe[]; duration: number } {
+  const duration = Math.max(1, cues[cues.length - 1].at);
+  const frames = cues.map(
+    ({ at, gaze, open }): Keyframe => ({
+      transform: `translate(${gaze.x * CELL.x}px, ${gaze.y * CELL.y}px) scaleY(${open})`,
+      offset: Math.min(1, at / duration),
+    }),
+  );
+  return { frames, duration };
 }
 
 // ---------- the scene ----------
@@ -272,10 +305,21 @@ function part<T extends Element>(root: Element, selector: string): T {
  * Plays the mascot's scene. Resolves when the mascot has gone back behind the
  * set. If the signal aborts, everything is hidden at once and the promise rejects
  * with an `AbortError`.
+ *
+ * It always moves: the caller must not run it for a visitor who asks for reduced
+ * motion. It rejects with an `Error` if the set has no box to stand on or if the
+ * scene is already playing on this mascot.
  */
 export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void> {
   const { tv, beamTarget, signal, onTorchOn } = opts;
   if (signal.aborted) return Promise.reject(abortError());
+  if (root.hasAttribute('data-playing')) {
+    return Promise.reject(new Error('The mascot scene is already playing.'));
+  }
+  const box = tv.getBoundingClientRect();
+  if (box.width === 0 || box.height === 0) {
+    return Promise.reject(new Error('The set has no box for the mascot to play on.'));
+  }
 
   let eyes: SVGGElement;
   let torch: HTMLElement;
@@ -405,7 +449,8 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
     await sleep(250);
 
     // 2. A glance left, a glance right, then straight out: two blinks.
-    await run(eyes, glance, { duration: GLANCE_MS, easing: 'linear' });
+    const glance = eyeAnimation(glanceCues());
+    await run(eyes, () => glance.frames, { duration: glance.duration, easing: 'linear' });
     await sleep(420);
 
     // 3. It ducks back, then pops up on the top-left corner with a landing squash.
@@ -435,7 +480,7 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
     await sleep(200);
 
     // 4. Its eyes go to the rail, the torch comes up, and the light sweeps along it.
-    const toTheRail = turn(AHEAD, toRail);
+    const toTheRail = eyeAnimation(turnCues(AHEAD, toRail));
     await run(eyes, () => toTheRail.frames, { duration: toTheRail.duration });
     await sleep(180);
     layBeam();
@@ -480,10 +525,11 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
       },
       { duration: 320, easing: 'ease-in' },
     );
-    const backToYou = turn(toRail, AHEAD);
+    const backToYou = eyeAnimation(turnCues(toRail, AHEAD));
     await run(eyes, () => backToYou.frames, { duration: backToYou.duration });
     await sleep(260);
-    await run(eyes, blink, { duration: 240, easing: 'linear' });
+    const blink = eyeAnimation(blinkCues());
+    await run(eyes, () => blink.frames, { duration: blink.duration, easing: 'linear' });
     await sleep(320);
     await run(
       root,
