@@ -13,7 +13,7 @@ const graph = sparklinePoints(CF_RATINGS, 90, 50, 4, 3);
 <aside class="results" aria-label="Results">
   <i class="trk"></i>
   <div class="rail" data-rail>
-    <div class="track">
+    <div class="track" data-rail-track>
       {
         [false, true].map((isCopy) => (
           <ul class="cards" aria-hidden={isCopy ? 'true' : undefined}>

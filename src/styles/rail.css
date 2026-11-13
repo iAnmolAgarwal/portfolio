@@ -38,8 +38,73 @@
   width: calc(212 * var(--u));
   overflow: hidden;
   opacity: 0.62;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  transition: opacity 0.9s ease;
+
+  /* How much of each end fades out. */
+  --rail-fade: 14%;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--rail-fade),
+    #000 calc(100% - var(--rail-fade)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--rail-fade),
+    #000 calc(100% - var(--rail-fade)),
+    transparent
+  );
+}
+
+/* Under the pointer, or with the keyboard in it, the rail comes to full strength. */
+.rail:hover,
+.rail:focus-visible {
+  opacity: 1;
+}
+
+.rail:has(:focus-visible) {
+  opacity: 1;
+}
+
+/*
+ * For a visitor who asked for less motion the script leaves the rail still and it
+ * scrolls by hand along its axis instead. The cards are shown once, the fades are
+ * short, and the list has that much room at each end, so the first and the last
+ * card can both be brought clear of the fades.
+ */
+.rail[data-motion='still'] {
+  --rail-fade: calc(28 * var(--u));
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.rail[data-motion='still'][data-axis='x'] {
+  overflow: auto hidden;
+}
+
+.rail[data-motion='still']::-webkit-scrollbar {
+  display: none;
+}
+
+/* The keyboard's mark on it, in the page's own ink. */
+.rail[data-motion='still']:focus-visible {
+  outline: var(--line) solid var(--ink);
+  outline-offset: calc(-1 * var(--line));
+}
+
+.rail[data-motion='still'] .track {
+  padding: var(--rail-fade) 0;
+}
+
+.rail[data-motion='still'][data-axis='x'] .track {
+  padding: 0 var(--rail-fade);
+}
+
+.rail[data-motion='still'] .cards[aria-hidden='true'] {
+  display: none;
 }
 
 /*
