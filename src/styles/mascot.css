@@ -1,19 +1,32 @@
 /* The mascot, its torch and the beam. Out of sight except while its scene plays. */
 
+/*
+ * A box the size of the window that the scene plays inside. It clips what leaves
+ * the window, which the beam does, so the page never grows a scrollbar. It sits
+ * under the set's body and over everything else the set is drawn with, so the
+ * mascot comes out from behind the set.
+ */
+.mascot-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  overflow: clip;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The script moves it from the window's corner to wherever the set is. */
 .mascot {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 1;
   width: calc(54 * var(--u));
-  /* Its resting place: tucked behind the set's top-left corner. */
-  transform: translate(calc(30 * var(--u)), calc(8 * var(--u)));
   transform-origin: 50% 100%;
-  visibility: hidden;
 }
 
-html[data-stage='mascot'] .mascot,
-html[data-stage='lit'] .mascot {
+/* Only the script that plays the scene shows it, and only while it plays. */
+.mascot[data-playing] {
   visibility: visible;
 }
 
@@ -44,13 +57,19 @@ html[data-stage='lit'] .mascot {
   height: auto;
 }
 
+/*
+ * A cone of light widening away from the torch. The script sets its length so
+ * that it reaches the far end of the rail; its width follows from the length.
+ */
 .beam {
+  --beam-length: calc(860 * var(--u));
+  --beam-width: calc(var(--beam-length) * 420 / 860);
   position: absolute;
   right: calc(100% - 2 * var(--u));
   top: 50%;
-  width: calc(860 * var(--u));
-  height: calc(420 * var(--u));
-  margin-top: calc(-210 * var(--u));
+  width: var(--beam-length);
+  height: var(--beam-width);
+  margin-top: calc(var(--beam-width) / -2);
   background: linear-gradient(
     to left,
     rgba(255, 196, 98, 0.7),
@@ -60,5 +79,4 @@ html[data-stage='lit'] .mascot {
   );
   clip-path: polygon(100% 49%, 100% 51%, 0 100%, 0 0);
   opacity: 0;
-  pointer-events: none;
 }

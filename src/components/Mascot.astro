@@ -2,30 +2,35 @@
 // The Claude Code mascot with its torch and beam, for the opening scene. Drawn on
 // the terminal's grid, each cell one wide and two tall: a 12-by-8 body, an arm out
 // each side, four legs and two eyes. It is out of sight on the finished page.
+//
+// The outer box covers the window and clips to it, so the long beam never makes
+// the page bigger than the screen.
 ---
 
-<div class="mascot" data-mascot aria-hidden="true">
-  <div class="torch">
-    <div class="beam" data-beam aria-hidden="true"></div>
-    <svg viewBox="0 0 5 3" shape-rendering="crispEdges">
-      <rect x="0" y="0" width="1" height="3" fill="#ffd27a"></rect>
-      <rect x="1" y="0" width="1" height="3" fill="#3a3a40"></rect>
-      <rect x="2" y="1" width="3" height="1" fill="#3a3a40"></rect>
+<div class="mascot-scene" aria-hidden="true">
+  <div class="mascot" data-mascot aria-hidden="true">
+    <div class="torch" data-torch aria-hidden="true">
+      <div class="beam" data-beam aria-hidden="true"></div>
+      <svg viewBox="0 0 5 3" shape-rendering="crispEdges">
+        <rect x="0" y="0" width="1" height="3" fill="#ffd27a"></rect>
+        <rect x="1" y="0" width="1" height="3" fill="#3a3a40"></rect>
+        <rect x="2" y="1" width="3" height="1" fill="#3a3a40"></rect>
+      </svg>
+    </div>
+    <svg class="sprite" viewBox="0 0 18 10" shape-rendering="crispEdges">
+      <g fill="var(--mascot)">
+        <rect x="3" y="0" width="12" height="4"></rect>
+        <rect x="1" y="4" width="16" height="2"></rect>
+        <rect x="3" y="6" width="12" height="2"></rect>
+        <rect x="4" y="8" width="1" height="2"></rect>
+        <rect x="6" y="8" width="1" height="2"></rect>
+        <rect x="11" y="8" width="1" height="2"></rect>
+        <rect x="13" y="8" width="1" height="2"></rect>
+      </g>
+      <g class="eyes" data-eyes fill="var(--mascot-eye)">
+        <rect x="5" y="2" width="1" height="2"></rect>
+        <rect x="12" y="2" width="1" height="2"></rect>
+      </g>
     </svg>
   </div>
-  <svg class="sprite" viewBox="0 0 18 10" shape-rendering="crispEdges">
-    <g fill="var(--mascot)">
-      <rect x="3" y="0" width="12" height="4"></rect>
-      <rect x="1" y="4" width="16" height="2"></rect>
-      <rect x="3" y="6" width="12" height="2"></rect>
-      <rect x="4" y="8" width="1" height="2"></rect>
-      <rect x="6" y="8" width="1" height="2"></rect>
-      <rect x="11" y="8" width="1" height="2"></rect>
-      <rect x="13" y="8" width="1" height="2"></rect>
-    </g>
-    <g class="eyes" fill="var(--mascot-eye)">
-      <rect x="5" y="2" width="1" height="2"></rect>
-      <rect x="12" y="2" width="1" height="2"></rect>
-    </g>
-  </svg>
 </div>
