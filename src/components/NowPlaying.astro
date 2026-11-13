@@ -1,0 +1,25 @@
+---
+// The words under the set: the name of the project that is on screen, its one
+// line and its links, in that channel's colour.
+import type { Channel } from '../data/site';
+
+interface Props {
+  channel: Channel;
+}
+
+const { channel } = Astro.props;
+---
+
+<section class="now" data-now style={`--accent: ${channel.accent}`}>
+  <h2 class="now-title" data-now-title>{channel.title}</h2>
+  <p class="now-line" data-now-line>{channel.line}</p>
+  <p class="now-links" data-now-links>
+    {
+      channel.links.map((link) => (
+        <a class="link" href={link.href} target="_blank" rel="noopener">
+          {link.label}
+        </a>
+      ))
+    }
+  </p>
+</section>

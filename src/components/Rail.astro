@@ -1,0 +1,66 @@
+---
+// The rail of results on the left: four cards, each a picture above a caption,
+// between two hairline tracks. The list is rendered twice so it can roll as a
+// seamless loop; the second copy is hidden from screen readers.
+import { CF_RATINGS, CODEFORCES_WORDMARK, RESULT_IMAGES, RESULTS } from '../data/site';
+import { sparklinePoints } from '../lib/sparkline';
+
+// His rating history in a box 90 by 50, kept 3 clear of the sides and 4 of the
+// top and bottom, then stretched to the card's width.
+const graph = sparklinePoints(CF_RATINGS, 90, 50, 4, 3);
+---
+
+<aside class="results" aria-label="Results">
+  <i class="trk"></i>
+  <div class="rail" data-rail>
+    <div class="track">
+      {
+        [false, true].map((isCopy) => (
+          <ul class="cards" aria-hidden={isCopy ? 'true' : undefined}>
+            {RESULTS.map((result) => (
+              <li class:list={['card', { photo: result.id === 'amplified' }]}>
+                {result.id === 'codeforces' ? (
+                  <div class="art drawn">
+                    <div class="wordmark">
+                      <svg viewBox="0 0 30 24" aria-hidden="true">
+                        <rect x="0" y="8" width="8" height="16" rx="2" fill="#F6C43D" />
+                        <rect x="11" y="0" width="8" height="24" rx="2" fill="#1480C4" />
+                        <rect x="22" y="12" width="8" height="12" rx="2" fill="#B11E26" />
+                      </svg>
+                      <span>{CODEFORCES_WORDMARK}</span>
+                    </div>
+                    <svg
+                      class="graph"
+                      viewBox="0 0 90 50"
+                      preserveAspectRatio="none"
+                      aria-hidden="true"
+                    >
+                      <polyline points={graph} />
+                    </svg>
+                  </div>
+                ) : (
+                  <div class="art">
+                    <img
+                      class:list={{
+                        medal: result.id === 'orchestrate',
+                        amz: result.id === 'amazon',
+                      }}
+                      src={RESULT_IMAGES[result.id].src}
+                      alt={RESULT_IMAGES[result.id].alt}
+                    />
+                  </div>
+                )}
+                <div class="cap">
+                  <b>{result.name}</b>
+                  <span class="rank">{result.number}</span>
+                  <span class="sub">{result.line}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ))
+      }
+    </div>
+  </div>
+  <i class="trk"></i>
+</aside>

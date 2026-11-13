@@ -1,15 +1,46 @@
 ---
-import { PERSON } from '../data/site';
+import '@fontsource/instrument-serif/latin-400.css';
+import '@fontsource/instrument-serif/latin-400-italic.css';
+import '@fontsource-variable/inter/wght.css';
+import '@fontsource/jetbrains-mono/latin-500.css';
+import '@fontsource/jetbrains-mono/latin-700.css';
+import '../styles/tokens.css';
+import '../styles/page.css';
+import '../styles/tv.css';
+import '../styles/rail.css';
+import '../styles/cable.css';
+import '../styles/mascot.css';
+
+import Cable from '../components/Cable.astro';
+import Mascot from '../components/Mascot.astro';
+import NowPlaying from '../components/NowPlaying.astro';
+import Rail from '../components/Rail.astro';
+import Television from '../components/Television.astro';
+import TopBar from '../components/TopBar.astro';
+import { CHANNELS, PERSON } from '../data/site';
+
+// The page is served finished, with the first channel on, so it is complete
+// before any script runs and for a visitor who has none.
+const first = CHANNELS[0];
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-stage="done" data-channel={first.number}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{PERSON.name}</title>
   </head>
   <body>
-    <h1>{PERSON.name}</h1>
+    <TopBar />
+    <main class="stage">
+      <div class="set">
+        <Mascot />
+        <Television channel={first} />
+        <Cable />
+      </div>
+      <NowPlaying channel={first} />
+    </main>
+    <Rail />
   </body>
 </html>

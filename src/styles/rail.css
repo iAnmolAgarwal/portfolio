@@ -1,0 +1,156 @@
+/* The rail of results down the left, between its two hairline tracks. */
+
+.results {
+  position: absolute;
+  left: calc(30 * var(--u));
+  top: calc(104 * var(--u));
+  bottom: calc(16 * var(--u));
+  width: calc(233 * var(--u));
+}
+
+.trk {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--ink) 34%, transparent) 14%,
+    color-mix(in srgb, var(--ink) 34%, transparent) 86%,
+    transparent
+  );
+}
+
+.trk:first-child {
+  left: 0;
+}
+
+.trk:last-child {
+  right: 0;
+}
+
+.rail {
+  position: absolute;
+  left: calc(10 * var(--u));
+  top: 0;
+  bottom: 0;
+  width: calc(212 * var(--u));
+  overflow: hidden;
+  opacity: 0.62;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 14%, #000 86%, transparent);
+}
+
+/*
+ * The list of cards is there twice, one copy after the other. Each copy ends with
+ * the same space that separates its cards, so the second starts exactly one copy
+ * below the first and the two can roll as a seamless loop.
+ */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: calc(16 * var(--u));
+  padding-bottom: calc(16 * var(--u));
+  list-style: none;
+}
+
+.card {
+  flex: none;
+  overflow: hidden;
+  border: var(--line) solid var(--ink);
+  border-radius: calc(12 * var(--u));
+  background: var(--paper);
+}
+
+/* ---------- the picture ---------- */
+
+.card .art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(118 * var(--u));
+  padding: 0 calc(16 * var(--u));
+}
+
+.card.photo .art {
+  height: calc(176 * var(--u));
+  padding: 0;
+}
+
+.card.photo img {
+  display: block;
+  width: calc(148 * var(--u));
+  height: calc(148 * var(--u));
+  border-radius: 10%;
+  object-fit: cover;
+}
+
+.card .medal {
+  height: calc(98 * var(--u));
+}
+
+.card .amz {
+  width: calc(128 * var(--u));
+}
+
+.card .drawn {
+  flex-direction: column;
+  gap: calc(10 * var(--u));
+}
+
+.card .wordmark {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(9 * var(--u));
+  font-size: calc(15 * var(--u));
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.card .wordmark svg {
+  width: calc(30 * var(--u));
+  height: calc(24 * var(--u));
+}
+
+.card .graph {
+  width: calc(150 * var(--u));
+  height: calc(50 * var(--u));
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- the caption: bold name, a number on the right, one line beneath ---------- */
+
+.card .cap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: calc(8 * var(--u));
+  align-items: baseline;
+  padding: calc(9 * var(--u)) calc(12 * var(--u)) calc(10 * var(--u));
+  border-top: var(--line) solid var(--ink);
+  color: var(--muted);
+  font-size: calc(11 * var(--u));
+  line-height: 1.35;
+}
+
+.card .cap b {
+  color: var(--ink);
+  font-size: calc(12 * var(--u));
+  font-weight: 600;
+}
+
+.card .rank {
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: calc(24 * var(--u));
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.card .sub {
+  grid-column: 1 / -1;
+}

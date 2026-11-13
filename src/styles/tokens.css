@@ -1,0 +1,34 @@
+/* Colours, type and the one length everything on the page is sized from. */
+
+:root {
+  --paper: #f6f6f3;
+  --ink: #16161a;
+  --muted: #6d6d75;
+  --screen-off: #0b0b0d;
+  --mascot: #d77757;
+  --mascot-eye: #141414;
+
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans: 'Inter Variable', Inter, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /*
+   * One unit of the drawing. The page is composed on a sheet 1440 wide and 844
+   * tall, and the sheet is scaled to fit the viewport, so the set, the rail, the
+   * cable, the mascot and the lettering all grow and shrink together. On a
+   * 1440-wide window one unit is one pixel.
+   */
+  --u: min(100vw / 1440, 100vh / 844);
+
+  /* The weight of every drawn line: the set's outline, the cards, the legs. */
+  --line: max(1px, calc(1.5 * var(--u)));
+
+  --tv-w: calc(777.6 * var(--u));
+}
+
+/* Follow the height that is actually visible where the browser can report it. */
+@supports (height: 100dvh) {
+  :root {
+    --u: min(100dvw / 1440, 100dvh / 844);
+  }
+}

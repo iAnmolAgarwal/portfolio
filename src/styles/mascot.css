@@ -1,0 +1,64 @@
+/* The mascot, its torch and the beam. Out of sight except while its scene plays. */
+
+.mascot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  width: calc(54 * var(--u));
+  /* Its resting place: tucked behind the set's top-left corner. */
+  transform: translate(calc(30 * var(--u)), calc(8 * var(--u)));
+  transform-origin: 50% 100%;
+  visibility: hidden;
+}
+
+html[data-stage='mascot'] .mascot,
+html[data-stage='lit'] .mascot {
+  visibility: visible;
+}
+
+.mascot .sprite {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.mascot .eyes {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.torch {
+  position: absolute;
+  right: calc(100% - 5 * var(--u));
+  top: calc(9 * var(--u));
+  width: calc(22 * var(--u));
+  transform: rotate(70deg) scale(0);
+  transform-origin: 100% 50%;
+}
+
+.torch svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.beam {
+  position: absolute;
+  right: calc(100% - 2 * var(--u));
+  top: 50%;
+  width: calc(860 * var(--u));
+  height: calc(420 * var(--u));
+  margin-top: calc(-210 * var(--u));
+  background: linear-gradient(
+    to left,
+    rgba(255, 196, 98, 0.7),
+    rgba(255, 206, 128, 0.3) 30%,
+    rgba(255, 214, 150, 0.12) 70%,
+    rgba(255, 214, 150, 0) 96%
+  );
+  clip-path: polygon(100% 49%, 100% 51%, 0 100%, 0 0);
+  opacity: 0;
+  pointer-events: none;
+}

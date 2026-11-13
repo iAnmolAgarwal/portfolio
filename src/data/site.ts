@@ -31,6 +31,17 @@ export const PERSON: { name: string; github: string; linkedin: string; resume: s
   resume: '/anmol-agarwal-resume.pdf',
 };
 
+// The three links in the top bar, in the order they are shown.
+export const TOP_LINKS: readonly {
+  id: 'github' | 'linkedin' | 'resume';
+  label: string;
+  href: string;
+}[] = [
+  { id: 'github', label: 'GitHub', href: PERSON.github },
+  { id: 'linkedin', label: 'LinkedIn', href: PERSON.linkedin },
+  { id: 'resume', label: 'Resume', href: PERSON.resume },
+];
+
 export const CHANNELS: readonly Channel[] = [
   {
     id: 'studio',
@@ -101,6 +112,36 @@ export const RESULTS: readonly Result[] = [
     line: '28 Rated Contests',
   },
 ];
+
+// The picture on each result card that has one, and what it shows. The Codeforces
+// card is drawn on the page instead: its mark, its name and his rating graph.
+export const RESULT_IMAGES: Record<
+  Exclude<Result['id'], 'codeforces'>,
+  { src: string; alt: string }
+> = {
+  amplified: {
+    src: '/img/hcl-tile.png',
+    alt: 'Anmol Agarwal, Rank 1, from the HCLTech AMPLIfied winners page',
+  },
+  orchestrate: {
+    src: '/img/medal.png',
+    alt: 'HackerRank Orchestrate gold medal',
+  },
+  amazon: {
+    src: '/img/amazon.svg',
+    alt: 'Amazon',
+  },
+};
+
+export const CODEFORCES_WORDMARK = 'Codeforces';
+
+// The handwritten notes: by the cable's tangle, along its clean run (two lines),
+// and beside the dial.
+export const NOTES: { tangle: string; run: readonly [string, string]; dial: string } = {
+  tangle: 'tried a lot of things',
+  run: ['stayed for the ones', 'that fix a real problem'],
+  dial: 'turn the dial',
+};
 
 // His Codeforces rating after each of his 28 rated contests, oldest first.
 export const CF_RATINGS: readonly number[] = [

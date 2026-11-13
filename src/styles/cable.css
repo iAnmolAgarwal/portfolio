@@ -1,0 +1,38 @@
+/* The right side: a pile of tangled cable that straightens and plugs into the set. */
+
+.cable {
+  position: absolute;
+  left: 100%;
+  top: 51.5%;
+  width: calc(var(--tv-w) * 0.34);
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.cable svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.cable .plug rect {
+  fill: var(--paper);
+}
+
+/* The ring that pulses out when the plug goes in. Not there once it is in. */
+.cable .spark {
+  opacity: 0;
+}
+
+.cable .doodle {
+  stroke-width: 1.4;
+}
+
+.cable .note {
+  fill: currentColor;
+  stroke: none;
+  font-family: var(--serif);
+  font-size: 19px;
+  font-style: italic;
+}

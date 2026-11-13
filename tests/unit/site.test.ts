@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { CF_RATINGS, CHANNELS, PERSON, RESULTS, TIMING } from '../../src/data/site';
+import {
+  CF_RATINGS,
+  CHANNELS,
+  CODEFORCES_WORDMARK,
+  NOTES,
+  PERSON,
+  RESULT_IMAGES,
+  RESULTS,
+  TIMING,
+  TOP_LINKS,
+} from '../../src/data/site';
 
 const [studio, worth, pathwise] = CHANNELS;
 
@@ -92,6 +102,43 @@ describe('RESULTS', () => {
         line: '28 Rated Contests',
       },
     ]);
+  });
+});
+
+describe('TOP_LINKS', () => {
+  it('reads GitHub, LinkedIn, Resume and points where PERSON does', () => {
+    expect(TOP_LINKS).toEqual([
+      { id: 'github', label: 'GitHub', href: 'https://github.com/iAnmolAgarwal' },
+      { id: 'linkedin', label: 'LinkedIn', href: 'https://linkedin.com/in/anmolagarwal26' },
+      { id: 'resume', label: 'Resume', href: '/anmol-agarwal-resume.pdf' },
+    ]);
+  });
+});
+
+describe('RESULT_IMAGES', () => {
+  it('gives three cards their picture and says what it shows', () => {
+    expect(RESULT_IMAGES).toEqual({
+      amplified: {
+        src: '/img/hcl-tile.png',
+        alt: 'Anmol Agarwal, Rank 1, from the HCLTech AMPLIfied winners page',
+      },
+      orchestrate: { src: '/img/medal.png', alt: 'HackerRank Orchestrate gold medal' },
+      amazon: { src: '/img/amazon.svg', alt: 'Amazon' },
+    });
+  });
+
+  it('names Codeforces beside its mark', () => {
+    expect(CODEFORCES_WORDMARK).toBe('Codeforces');
+  });
+});
+
+describe('NOTES', () => {
+  it('carries the handwritten notes word for word', () => {
+    expect(NOTES).toEqual({
+      tangle: 'tried a lot of things',
+      run: ['stayed for the ones', 'that fix a real problem'],
+      dial: 'turn the dial',
+    });
   });
 });
 

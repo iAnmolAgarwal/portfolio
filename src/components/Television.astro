@@ -1,0 +1,88 @@
+---
+// The set: antenna, body, screen, the panel with the channel dial, two legs, and
+// the handwritten note beside the dial. It is rendered showing one channel.
+import { CHANNELS, NOTES, type Channel } from '../data/site';
+
+interface Props {
+  channel: Channel;
+}
+
+const { channel } = Astro.props;
+
+// Where each channel's number sits round the dial, in the dial drawing's own units.
+const NUMBER_AT = [
+  { x: 17, y: 22 },
+  { x: 50, y: 8 },
+  { x: 83, y: 22 },
+];
+---
+
+<div class="tv" data-tv>
+  <div class="antenna"><i></i><i></i></div>
+  <div class="tv-body">
+    <div class="screen" data-screen>
+      <div class="media">
+        <video
+          src={channel.video}
+          poster={channel.poster}
+          muted
+          loop
+          playsinline
+          preload="metadata"></video>
+      </div>
+      <div class="static"></div>
+      <div class="crt"></div>
+      <div class="osd" aria-hidden="true">CH {channel.number}</div>
+    </div>
+    <div class="panel">
+      <div class="dial">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="dial-ring" cx="50" cy="50" r="36" pathLength="100"></circle>
+          {
+            CHANNELS.map((each, index) => (
+              <text
+                class="dial-num"
+                data-n={each.number}
+                x={NUMBER_AT[index].x}
+                y={NUMBER_AT[index].y}
+                text-anchor="middle"
+              >
+                {each.number}
+              </text>
+            ))
+          }
+        </svg>
+        <div
+          class="knob"
+          data-dial
+          role="slider"
+          tabindex="0"
+          aria-label="Channel"
+          aria-valuemin="1"
+          aria-valuemax={CHANNELS.length}
+          aria-valuenow={channel.number}
+        >
+          <span></span>
+        </div>
+      </div>
+      <div class="knob small"><span></span></div>
+      <div class="grille"></div>
+    </div>
+  </div>
+  <div class="legs"><i></i><i></i></div>
+  <div class="hint" data-hint>
+    <svg
+      viewBox="0 0 64 34"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M60 30 C 44 30, 22 26, 6 8"></path>
+      <path d="M5 19 L5 7 L17 9"></path>
+    </svg>
+    <em>{NOTES.dial}</em>
+  </div>
+</div>
