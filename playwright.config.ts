@@ -1,8 +1,5 @@
 import { defineConfig } from '@playwright/test';
 
-// Node's types are not installed, so say what little of `process` is used here.
-declare const process: { env: Record<string, string | undefined> };
-
 // E2E_PORT lets several worktrees run their browser tests at the same time.
 const PORT = process.env.E2E_PORT || '4321';
 const BASE_URL = `http://localhost:${PORT}`;
