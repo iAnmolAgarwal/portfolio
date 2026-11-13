@@ -1,6 +1,11 @@
 import { defineConfig } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:4321';
+// Node's types are not installed, so say what little of `process` is used here.
+declare const process: { env: Record<string, string | undefined> };
+
+// E2E_PORT lets several worktrees run their browser tests at the same time.
+const PORT = process.env.E2E_PORT || '4321';
+const BASE_URL = `http://localhost:${PORT}`;
 
 // Tests run against the built site, so run `npm run build` before `npm run e2e`.
 export default defineConfig({
@@ -25,7 +30,7 @@ export default defineConfig({
     // Astro puts the preview server in the background by itself when a coding agent
     // runs it, and Playwright then sees the command exit. `--ignore-lock` keeps it
     // in the foreground so Playwright starts and stops it.
-    command: 'npm run preview -- --ignore-lock --port 4321',
+    command: `npm run preview -- --ignore-lock --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: false,
   },
