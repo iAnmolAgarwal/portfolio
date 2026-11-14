@@ -215,7 +215,7 @@ for (const size of SIZES) {
       await open(page, size);
       const tagline = page.locator('[data-tagline]');
       await expect(tagline).toHaveText(PERSON.tagline);
-      expect(PERSON.tagline).toBe('Open to Summer 2027 SWE Internships');
+      expect(PERSON.tagline).toBe('Open to Summer 2027 SWE internships');
       expect(await linesOf(tagline)).toBe(1);
       const name = await boxOf(page.locator('.name'));
       const line = await boxOf(tagline);
