@@ -121,12 +121,14 @@ test.describe('what the page says about itself', () => {
     await expect(meta('property="og:image:alt"')).toHaveAttribute('content', /\S/);
     await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute('href', SITE);
 
-    const icon = page.locator('head link[rel="icon"]');
-    await expect(icon).toHaveCount(1);
-    const href = await icon.getAttribute('href');
-    const served = await page.request.get(href ?? '');
-    expect(served.status()).toBe(200);
-    expect(served.headers()['content-type']).toMatch(/^image\//);
+    // The tab's icon in both forms (Safari wants the classic one) and the phone's home-screen icon.
+    const icons = page.locator('head link:is([rel="icon"], [rel="apple-touch-icon"])');
+    await expect(icons).toHaveCount(3);
+    for (const icon of await icons.all()) {
+      const served = await page.request.get((await icon.getAttribute('href')) ?? '');
+      expect(served.status()).toBe(200);
+      expect(served.headers()['content-type']).toMatch(/^image\//);
+    }
   });
 
   test('a share image of the finished page, 1200×630 and under 300 KB', async ({ page }) => {
