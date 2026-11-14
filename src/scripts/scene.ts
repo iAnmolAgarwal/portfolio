@@ -39,8 +39,10 @@ const WIRE_AFTER_MS = 300;
 const WIRE_MS = 3400;
 const WIRE_EASING = 'cubic-bezier(0.5, 0.05, 0.25, 1)';
 const NOTE_MS = 700;
-const TANGLE_NOTE_AFTER_MS = 300;
-const RUN_NOTE_AFTER_MS = 3300;
+// "tried a lot of things" comes first, then the small drawings, then "stayed for
+// the ones that fix a real problem" once the last drawing is in.
+const FIRST_NOTE_AFTER_MS = 300;
+const SECOND_NOTE_AFTER_MS = 2300;
 const DOODLE_MS = 600;
 const FIRST_DOODLE_AFTER_MS = 400;
 const DOODLE_EVERY_MS = 300;
@@ -285,15 +287,16 @@ export function createPageOpening(
     rise(set, SET_MS, SET_AFTER_MS);
   }
 
-  // The line draws itself from the tangle to the set. The first note and the small
-  // drawings come early, the second note as the line arrives, then the plug and
-  // the ring that pulses out from it.
+  // The line draws itself from the tangle to the set. The first note ("tried a lot
+  // of things", above the drawings) and the small drawings come early; the second
+  // note (beside the tangle) follows the last drawing; then the plug and the ring
+  // that pulses out from it.
   function drawCable(): void {
     letGoOfRisen();
     animate(wire, WIRE_FRAMES, { duration: WIRE_MS, delay: WIRE_AFTER_MS, easing: WIRE_EASING });
     animate(tangleNote, APPEAR_FRAMES, {
       duration: NOTE_MS,
-      delay: TANGLE_NOTE_AFTER_MS,
+      delay: SECOND_NOTE_AFTER_MS,
       easing: 'ease',
     });
     doodles.forEach((doodle, index) => {
@@ -304,7 +307,7 @@ export function createPageOpening(
       });
     });
     for (const note of runNotes) {
-      animate(note, APPEAR_FRAMES, { duration: NOTE_MS, delay: RUN_NOTE_AFTER_MS, easing: 'ease' });
+      animate(note, APPEAR_FRAMES, { duration: NOTE_MS, delay: FIRST_NOTE_AFTER_MS, easing: 'ease' });
     }
     animate(plug, APPEAR_FRAMES, {
       duration: PLUG_FADE_MS,
