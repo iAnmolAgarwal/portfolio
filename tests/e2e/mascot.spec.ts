@@ -9,7 +9,7 @@ import { expect, test, type Page } from '@playwright/test';
 // are about the order and the shape of things and do not depend on when the test
 // happens to look. The time limits are generous for a machine under load.
 
-test.skip(({ isMobile }) => isMobile, 'The desktop arrangement; the phone has its own tests.');
+test.skip(({ isMobile }) => isMobile, 'The desktop scene, beam down the rail; the phone scene is in phone.spec.ts.');
 
 // The whole opening takes about sixteen seconds when it is left to play.
 test.setTimeout(60_000);

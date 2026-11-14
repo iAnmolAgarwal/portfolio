@@ -108,35 +108,62 @@ body {
   transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.link:hover,
+/*
+ * The pointer's part is only for a pointer that can hover. On a touch screen a
+ * tapped link would otherwise stay risen until the next tap somewhere else.
+ */
 .link:focus-visible {
   outline: none;
   transform: translateY(calc(-1 * var(--rise)));
 }
 
-.link:hover::after,
 .link:focus-visible::after {
   transform: scaleX(1);
 }
 
-.link:hover svg,
 .link:focus-visible svg {
   transform: scale(1.14) rotate(-6deg);
 }
 
-.link:active {
-  transform: translateY(0);
-  transition-duration: 0.05s;
+@media (hover: hover) {
+  .link:hover {
+    transform: translateY(calc(-1 * var(--rise)));
+  }
+
+  .link:hover::after {
+    transform: scaleX(1);
+  }
+
+  .link:hover svg {
+    transform: scale(1.14) rotate(-6deg);
+  }
+
+  .link:active {
+    transform: translateY(0);
+    transition-duration: 0.05s;
+  }
+
+  /*
+   * A risen link still reaches down to where it rested, so a pointer at its lower
+   * edge stays over it and the link does not flutter up and down.
+   */
+  .link:hover::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 calc(-1 * (var(--under) + var(--rise))) 0;
+  }
 }
 
 /*
- * A risen link still reaches down to where it rested, so a pointer at its lower
- * edge stays over it and the link does not flutter up and down.
+ * A finger needs a target at least 44 pixels each way. A link smaller than that
+ * is given an invisible margin to make it up, centred on it.
  */
-.link:hover::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 calc(-1 * (var(--under) + var(--rise))) 0;
+@media (pointer: coarse) {
+  .link::before {
+    content: '';
+    position: absolute;
+    inset: min(0px, 50% - 22px);
+  }
 }
 
 /* ---------- centre column: the set, then the words for what is on it ---------- */
@@ -235,9 +262,31 @@ body {
   opacity: 0.45;
 }
 
-.now-links .link:hover::after,
 .now-links .link:focus-visible::after {
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .now-links .link:hover::after {
+    opacity: 1;
+  }
+}
+
+/* ---------- what a short window gives up (`data-give`, set by the script) ---------- */
+
+/* One: the small drawings round the cable. */
+html[data-give='1'] .cable .doodle {
+  display: none;
+}
+
+/* Two: the cable and its notes, leaving only the plug at the set's side. */
+html:is([data-give='2'], [data-give='3']) .cable :is(.wire, .note, .doodle) {
+  display: none;
+}
+
+/* Three: the project's one line as well. */
+html[data-give='3'] .now-lines {
+  display: none;
 }
 
 /* ---------- the opening ---------- */

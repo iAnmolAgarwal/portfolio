@@ -145,10 +145,17 @@ export const CODEFORCES_WORDMARK = 'Codeforces';
 
 // The handwritten notes: the two beside the cable, in the order they are read (the
 // second on two lines), and the one beside the dial.
-export const NOTES: { first: string; second: readonly [string, string]; dial: string } = {
+export const NOTES: {
+  first: string;
+  second: readonly [string, string];
+  dial: string;
+  dialPhone: string;
+} = {
   first: 'tried a lot of things',
   second: ['stayed for the ones', 'that fix a real problem'],
   dial: 'turn the dial',
+  // On a phone the dial is tapped, not turned.
+  dialPhone: 'tap the dial',
 };
 
 // His Codeforces rating after each of his 28 rated contests, oldest first.

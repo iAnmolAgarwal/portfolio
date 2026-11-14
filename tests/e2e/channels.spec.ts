@@ -7,8 +7,6 @@ import { openFinished } from './finished';
 // skipped and the set comes on. Animations and the clips themselves still run in
 // real time.
 
-test.skip(({ isMobile }) => isMobile, 'The desktop arrangement; the phone has its own tests.');
-
 // The channel table from the design document.
 const CHANNELS = [
   {
@@ -153,7 +151,8 @@ test('clicking the dial steps one channel and puts the hint away', async ({ page
   await expectChannel(page, 3);
 });
 
-test('dragging the dial to its right end selects channel 3', async ({ page }) => {
+test('dragging the dial to its right end selects channel 3', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'A phone dial is tapped, not dragged (phone.spec.ts).');
   await open(page);
   // Up and to the right of the dial, past where the 3 sits.
   await dragDial(page, { dx: 60, dy: -20 });
@@ -214,7 +213,9 @@ test('picking the channel that is already on changes nothing but still counts as
 
 test('a drag let go on the channel that is on turns the dial back and changes nothing', async ({
   page,
+  isMobile,
 }) => {
+  test.skip(isMobile, 'A phone dial is tapped, not dragged (phone.spec.ts).');
   await open(page);
   await page.clock.runFor(2000);
   await expect.poll(() => flashes(page)).toBe(0);
@@ -605,4 +606,21 @@ test('the channel readout sits on a dark plate, where it was', async ({ page }) 
   // The plate itself stays inside the screen.
   expect(plate.box.top).toBeGreaterThan(plate.screen.top);
   expect(plate.box.right).toBeLessThan(plate.screen.right);
+});
+
+test('does not change channel by itself while the dial is held', async ({ page }) => {
+  await open(page);
+  const dial = page.locator('[data-dial]');
+  await page.clock.runFor(AUTO_MS - 2000);
+  const centre = await centreOf(dial);
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  // Well past when the change was due: the hand is still on the dial.
+  await page.clock.runFor(4000);
+  await expectChannel(page, 1);
+  expect(await flashes(page)).toBe(0);
+  // Let go, it is a click: one step, by hand.
+  await page.mouse.up();
+  await expectChannel(page, 2);
+  await expect(page.locator('html')).toHaveAttribute('data-touched', '');
 });

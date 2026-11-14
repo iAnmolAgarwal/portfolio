@@ -5,8 +5,6 @@ import { openFinished } from './finished';
 // The rail rolling and the links answering the pointer and the keyboard, on the
 // finished page with channel 1 on screen.
 
-test.skip(({ isMobile }) => isMobile, 'The desktop arrangement; the phone has its own tests.');
-
 async function open(page: Page): Promise<void> {
   await openFinished(page);
   await page.evaluate(() => document.fonts.ready);
@@ -60,7 +58,8 @@ function rgb(hex: string): string {
 const INK = 'rgb(22, 22, 26)';
 
 test.describe('the rail', () => {
-  test('rolls upward by itself as one animation', async ({ page }) => {
+  test('rolls upward by itself as one animation', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'The vertical rail is desktop only; the strip rolls leftward (phone.spec.ts).');
     await open(page);
     const before = await rolled(page);
     await page.waitForTimeout(1000);
@@ -75,7 +74,9 @@ test.describe('the rail', () => {
 
   test('stands still and comes to full strength under the pointer, then rolls on', async ({
     page,
-  }) => {
+  isMobile,
+}) => {
+    test.skip(isMobile, 'Hovering is for a mouse; a touch on the strip is tested in phone.spec.ts.');
     await open(page);
     const rail = page.locator('[data-rail]');
     await expect.poll(() => opacity(rail)).toBeCloseTo(0.62, 2);
@@ -94,7 +95,9 @@ test.describe('the rail', () => {
 
   test('loops over exactly one copy of the cards, and still does after a resize', async ({
     page,
-  }) => {
+  isMobile,
+}) => {
+    test.skip(isMobile, 'Measures the vertical loop at desktop sizes.');
     await open(page);
     const track = page.locator('[data-rail-track]');
     // Park the roll at the very end of its loop, where the seam would show.
@@ -118,6 +121,11 @@ test.describe('the rail', () => {
     const larger = await loopLength(page);
     expect(larger).toBeGreaterThan(wide * 1.2);
     await expect.poll(endOfLoop).toBeCloseTo(larger, 1);
+
+    // And back down: the loop shrinks with the window, and still has no seam.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect.poll(() => loopLength(page)).toBeCloseTo(wide, 1);
+    await expect.poll(endOfLoop).toBeCloseTo(wide, 1);
   });
 });
 
@@ -142,7 +150,9 @@ test.describe('the rail with reduced motion', () => {
     const last = rail.locator('.card', { hasText: 'Codeforces Specialist' }).first();
     await expect(last).not.toBeInViewport({ ratio: 1 });
     await rail.hover();
-    await page.mouse.wheel(0, 4000);
+    // Along the rail: down a column, sideways along a strip.
+    const across = (await rail.getAttribute('data-axis')) === 'x';
+    await page.mouse.wheel(across ? 4000 : 0, across ? 0 : 4000);
     await expect(last).toBeInViewport({ ratio: 1 });
 
     // The page itself still does not scroll.
@@ -154,7 +164,9 @@ test.describe('the top links', () => {
   for (const [index, label] of ['GitHub', 'LinkedIn', 'Resume'].entries()) {
     test(`${label} rises 2 px, draws its underline and tilts its logo under the pointer`, async ({
       page,
-    }) => {
+  isMobile,
+}) => {
+      test.skip(isMobile, 'Hovering is for a mouse; touch must not leave a link risen (phone.spec.ts).');
       await open(page);
       const link = page.getByRole('banner').getByRole('link').nth(index);
       await expect(link).toHaveText(label);
@@ -207,7 +219,8 @@ test.describe('the top links', () => {
 test.describe('the project links', () => {
   const studio = CHANNELS[0];
 
-  test('rise 2 px and strengthen their underline in the channel colour', async ({ page }) => {
+  test('rise 2 px and strengthen their underline in the channel colour', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'Hovering is for a mouse; touch must not leave a link risen (phone.spec.ts).');
     await open(page);
     const link = page.locator('[data-now-links] a').first();
     await expect(link).toHaveText(studio.links[0].label);

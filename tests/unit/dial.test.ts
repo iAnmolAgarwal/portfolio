@@ -165,8 +165,9 @@ describe('wireDial', () => {
     dial.fire('pointerup', { clientX: x + 20, clientY: y });
     expect(dial.onPick.mock.calls).toEqual([[2]]);
     expect(dial.attributes.has('data-dragging')).toBe(false);
-    // The live rotation is handed back; the settled angle belongs to the caller.
-    expect(dial.style.transform).toBe('rotate(-48deg)');
+    // The live rotation is handed back: the settled angle is the caller's, kept
+    // out of the inline style (the page has it in `--dial-angle`).
+    expect(dial.style.transform).toBe('');
     expect(dial.attributes.get('aria-valuenow')).toBe('3');
 
     // The browser's click that follows the release must not step again.
@@ -205,11 +206,84 @@ describe('wireDial', () => {
     dial.fire('pointermove', { clientX: x + 20, clientY: y });
     dial.fire('pointercancel');
     expect(dial.onPick).not.toHaveBeenCalled();
-    expect(dial.style.transform).toBe('rotate(-48deg)');
+    // Not the angle it had when the drag began: the page's, for the channel on now.
+    expect(dial.style.transform).toBe('');
     expect(dial.attributes.has('data-dragging')).toBe(false);
 
     dial.fire('pointermove', { clientX: x - 20, clientY: y });
-    expect(dial.style.transform).toBe('rotate(-48deg)');
+    expect(dial.style.transform).toBe('');
+  });
+
+  it('drops a drag whose pointer capture is lost, without picking', () => {
+    const dial = wired();
+    const { x, y } = dial.centre;
+    dial.fire('pointerdown', { clientX: x, clientY: y - 20 });
+    dial.fire('pointermove', { clientX: x + 20, clientY: y });
+    dial.fire('lostpointercapture');
+    expect(dial.style.transform).toBe('');
+    expect(dial.attributes.has('data-dragging')).toBe(false);
+    dial.fire('pointerup', { clientX: x + 20, clientY: y });
+    expect(dial.onPick).not.toHaveBeenCalled();
+  });
+
+  it('ignores moves with no button down', () => {
+    const dial = wired();
+    const { x, y } = dial.centre;
+    dial.fire('pointerdown', { clientX: x, clientY: y - 20 });
+    // The button was let go somewhere the dial did not hear of.
+    dial.fire('pointermove', { clientX: x + 20, clientY: y, buttons: 0 });
+    expect(dial.style.transform).toBe('');
+    expect(dial.attributes.has('data-dragging')).toBe(false);
+  });
+
+  it("does not let a drag's leftover click swallow a later keyboard or scripted click", () => {
+    vi.useFakeTimers();
+    try {
+      const dial = wired();
+      const { x, y } = dial.centre;
+      dial.fire('pointerdown', { clientX: x, clientY: y - 20 });
+      dial.fire('pointermove', { clientX: x + 20, clientY: y });
+      dial.fire('pointerup', { clientX: x + 20, clientY: y });
+      expect(dial.onPick.mock.calls).toEqual([[2]]);
+
+      // No click followed the drag. One from a script or the keyboard still steps.
+      dial.fire('click', { detail: 0 });
+      expect(dial.onPick.mock.calls).toEqual([[2], [0]]);
+
+      // Nor does one that comes after the drag's moment has passed.
+      dial.fire('pointerdown', { clientX: x, clientY: y - 20 });
+      dial.fire('pointermove', { clientX: x + 20, clientY: y });
+      dial.fire('pointerup', { clientX: x + 20, clientY: y });
+      vi.runAllTimers();
+      dial.fire('click', { detail: 1 });
+      expect(dial.onPick.mock.calls).toEqual([[2], [0], [2], [0]]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('asks whether it may be dragged at each press', () => {
+    const dial = fakeDial();
+    let current = 0;
+    let drag = true;
+    const onPick = vi.fn((index: number) => {
+      current = index;
+    });
+    wireDial(dial.el, { count: 3, current: () => current, onPick, drag: () => drag });
+    const { x, y } = dial.centre;
+
+    drag = false;
+    dial.fire('pointerdown', { clientX: x, clientY: y - 20 });
+    dial.fire('pointermove', { clientX: x + 20, clientY: y });
+    dial.fire('pointerup', { clientX: x + 20, clientY: y });
+    expect(onPick).not.toHaveBeenCalled();
+    expect(dial.style.transform).toBe('');
+
+    drag = true;
+    dial.fire('pointerdown', { clientX: x, clientY: y - 20 });
+    dial.fire('pointermove', { clientX: x + 20, clientY: y });
+    dial.fire('pointerup', { clientX: x + 20, clientY: y });
+    expect(onPick.mock.calls).toEqual([[2]]);
   });
 
   it('ignores a drag when dragging is off, and still steps on a tap', () => {

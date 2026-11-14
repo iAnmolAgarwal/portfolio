@@ -5,9 +5,10 @@ import { CHANNELS, TIMING } from '../data/site';
 import { createChannels } from './channels';
 import { channelToAngle, setDialValue, wireDial } from './dial';
 import { find } from './dom';
+import { watchLayout, type Layout } from './layout';
 import { playMascot } from './mascot';
-import { startRail } from './rail';
-import { createPageOpening, type Cast, type Scene } from './scene';
+import { startRail, type RailOptions } from './rail';
+import { createPageOpening, type Cast, type PageOpening, type Scene } from './scene';
 
 declare global {
   interface Window {
@@ -17,6 +18,7 @@ declare global {
 }
 
 type Timer = ReturnType<typeof setTimeout>;
+type RailAxis = RailOptions['axis'];
 
 // ---------- channels and the dial ----------
 
@@ -51,7 +53,7 @@ const RING_FRAMES: Keyframe[] = [{ strokeDashoffset: 100 }, { strokeDashoffset: 
  * motion, the set never changes channel by itself, shows each clip's still frame
  * without playing it, and changes channel by a plain cross-fade with no static.
  */
-function initChannels(reduced: boolean): Cast['set'] {
+function initChannels(reduced: boolean, canDrag: () => boolean): Cast['set'] {
   const root = document.documentElement;
   const screen = find<HTMLElement>('[data-screen]');
   const clips = Array.from(screen.querySelectorAll('video'));
@@ -73,6 +75,13 @@ function initChannels(reduced: boolean): Cast['set'] {
   // the keyboard is on one of their links. The channel waits for them.
   let pointerOnWords = false;
   let keyboardInWords = false;
+  // Is the visitor's finger or button on the dial. The set does not change
+  // channel under their hand: the wait is paused while it is held.
+  let dialHeld = false;
+  // When the pending change is due, on `performance.now()`, and what was left of
+  // the wait when the dial was pressed.
+  let dueAt = 0;
+  let leftWhenHeld: number | undefined;
   // When the 20 seconds after the last turn by hand are up, on `performance.now()`.
   let manualUntil = 0;
 
@@ -227,6 +236,9 @@ function initChannels(reduced: boolean): Cast['set'] {
 
   function draw(index: number, manual: boolean): void {
     if (manual) manualUntil = performance.now() + TIMING.afterManualMs;
+    dueAt = performance.now() + (manual ? TIMING.afterManualMs : TIMING.autoMs);
+    // A change made while the dial is held starts its own wait on release.
+    leftWhenHeld = undefined;
     root.dataset.channel = String(CHANNELS[index].number);
     dial.style.setProperty('--dial-angle', `${channelToAngle(index)}deg`);
     setDialValue(dial, index);
@@ -250,15 +262,46 @@ function initChannels(reduced: boolean): Cast['set'] {
   wireDial(dial, {
     count: CHANNELS.length,
     current: controller.current,
-    drag: true,
+    drag: canDrag,
     onPick(index) {
       markTouched();
       // Picking the channel that is already on is a touch and nothing more.
       if (index !== controller.current()) controller.tune(index, true);
     },
   });
-  // A wiggle must not carry on, or start, under the visitor's hand.
-  dial.addEventListener('pointerdown', stopNudge);
+  // A wiggle must not carry on, or start, under the visitor's hand, and nor may
+  // a change of channel: the wait stops where it is and goes on from there when
+  // the hand is lifted, wherever the press ends. A tap's own change of channel,
+  // which comes just after, starts its own wait as any turn by hand does.
+  let holding: number | undefined;
+  dial.addEventListener('pointerdown', (event) => {
+    stopNudge();
+    holding = event.pointerId;
+    if (dialHeld) return;
+    const was = counting();
+    dialHeld = true;
+    if (!was) return;
+    leftWhenHeld = Math.max(0, dueAt - performance.now());
+    controller.stop();
+    fill?.pause();
+  });
+  const letGo = (event: PointerEvent): void => {
+    if (event.pointerId !== holding) return;
+    holding = undefined;
+    dialHeld = false;
+    const left = leftWhenHeld;
+    leftWhenHeld = undefined;
+    if (left === undefined || !counting()) {
+      recount();
+      return;
+    }
+    dueAt = performance.now() + left;
+    controller.start(left);
+    fill?.play();
+  };
+  window.addEventListener('pointerup', letGo);
+  window.addEventListener('pointercancel', letGo);
+  dial.addEventListener('lostpointercapture', letGo);
 
   for (const clip of clips) clip.addEventListener('playing', loadTheRest, { once: true });
 
@@ -267,19 +310,22 @@ function initChannels(reduced: boolean): Cast['set'] {
   // The set counts down to a change by itself while it is on, in sight, and the
   // visitor is not reading the words under it.
   function counting(): boolean {
-    return on && !document.hidden && !pointerOnWords && !keyboardInWords;
+    return on && !document.hidden && !pointerOnWords && !keyboardInWords && !dialHeld;
   }
 
   // Starts the wait for the next change afresh, or stops it, as things now stand.
   // A fresh wait is 7 seconds, or what is left of the 20 after a turn by hand if
   // that is longer.
   function recount(): void {
+    // Whatever was paused under the hand is superseded by a fresh count.
+    leftWhenHeld = undefined;
     if (!counting()) {
       controller.stop();
       fill?.cancel();
       return;
     }
     const waitMs = Math.max(TIMING.autoMs, manualUntil - performance.now());
+    dueAt = performance.now() + waitMs;
     controller.start(waitMs);
     fillRing(waitMs);
   }
@@ -355,13 +401,18 @@ const MASCOT_AFTER_PICTURE_MS = 780;
  * as the light passes over it, and when the mascot has gone the opening ends,
  * which is when the note beside the dial fades in.
  */
-function mascotScene(mascot: HTMLElement, tv: HTMLElement): (scene: Scene) => Promise<void> {
+function mascotScene(
+  mascot: HTMLElement,
+  tv: HTMLElement,
+  layout: () => Layout,
+): (scene: Scene) => Promise<void> {
   return async (scene) => {
     await scene.wait(MASCOT_AFTER_PICTURE_MS);
     scene.setStage('mascot');
     await playMascot(mascot, {
       tv,
-      beamTarget: 'down',
+      // On a phone the rail is a strip along the bottom, lit from above.
+      beamTarget: layout().phone ? 'across' : 'down',
       signal: scene.signal,
       onTorchOn: scene.lightRail,
     });
@@ -377,13 +428,40 @@ function start(): void {
   const reduced = root.hasAttribute('data-reduced');
   const rail = find<HTMLElement>('[data-rail]');
 
+  // The layout is measured first, so that everything after it starts from the
+  // arrangement the window is in, and so that on a resize the page is laid out
+  // again before anything else that listens for one looks at it.
+  let layout: Layout = { phone: false, give: 0 };
+  let started: PageOpening | undefined;
+  // The axis the rail was last set rolling along, once it has been.
+  let railAxis: RailAxis | undefined;
+  const axis = (): RailAxis => (layout.phone ? 'x' : 'y');
+  const rollRail = (delayMs: number, rampMs: number): void => {
+    railAxis = axis();
+    startRail(rail, { delayMs, rampMs, axis: railAxis, reduced });
+  };
+
+  watchLayout((now) => {
+    const flipped = now.phone !== layout.phone;
+    layout = now;
+    if (!flipped || started === undefined) return;
+    // Turned between the phone and the desktop arrangement. An opening part-way
+    // through goes straight to the finished page, which suits either, and a rail
+    // already moving starts again along its new axis. A plain resize needs none
+    // of this: the rail and the mascot keep up with it by themselves.
+    if (!started.isDone()) started.skip('at once');
+    if (railAxis !== undefined && railAxis !== axis()) rollRail(0, 0);
+  });
+
   const opening = createPageOpening(
     {
-      set: initChannels(reduced),
-      rollRail: (delayMs, rampMs) => startRail(rail, { delayMs, rampMs, axis: 'y', reduced }),
+      set: initChannels(reduced, () => !layout.phone),
+      rollRail,
+      railAxis: axis,
     },
-    mascotScene(find<HTMLElement>('[data-mascot]'), find<HTMLElement>('[data-tv]')),
+    mascotScene(find<HTMLElement>('[data-mascot]'), find<HTMLElement>('[data-tv]'), () => layout),
   );
+  started = opening;
 
   // The opening plays only from the dark page the head set up for it. With
   // reduced motion, or if the page gave up waiting for this script and showed

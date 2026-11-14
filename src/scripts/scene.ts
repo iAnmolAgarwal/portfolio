@@ -13,6 +13,7 @@
 
 import { TIMING } from '../data/site';
 import { find, findAll } from './dom';
+import type { RailOptions } from './rail';
 import { createOpening, type OpeningStep, type Stage } from './opening';
 
 // ---------- when things happen ----------
@@ -92,12 +93,17 @@ const POWER_ON_FRAMES: Keyframe[] = [
 
 const DARK_FRAMES: Keyframe[] = [{ visibility: 'hidden' }, { visibility: 'hidden' }];
 
-const WIPE_FRAMES: Keyframe[] = [
-  { clipPath: 'inset(0 0 100% 0)' },
-  { clipPath: 'inset(0 0 0 0)' },
-];
+// The rail opens where the light has passed: from the top down a column, and
+// from the left along a strip. Its tracks draw the same way.
+const WIPE_FRAMES: Record<RailAxis, Keyframe[]> = {
+  y: [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0 0)' }],
+  x: [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }],
+};
 
-const TRACK_FRAMES: Keyframe[] = [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }];
+const TRACK_FRAMES: Record<RailAxis, Keyframe[]> = {
+  y: [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }],
+  x: [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
+};
 
 // ---------- what the opening is given, and what it gives back ----------
 
@@ -112,6 +118,8 @@ export interface Cast {
   };
   /** Sets the rail rolling after `delayMs`, easing up to speed over `rampMs`. */
   rollRail(delayMs: number, rampMs: number): void;
+  /** Which way the rail runs now: down a column (`y`) or along a strip (`x`). */
+  railAxis(): RailAxis;
 }
 
 /** What the scene after power-on has to work with. */
@@ -189,6 +197,8 @@ interface Part {
   to?: Keyframe;
 }
 
+type RailAxis = RailOptions['axis'];
+
 type Caught = Array<{ part: Part; from: Partial<Record<Moved, string>> }>;
 
 /**
@@ -202,13 +212,17 @@ export function createPageOpening(
   const root = document.documentElement;
   const top = find<HTMLElement>('.top');
   const set = find<HTMLElement>('.set');
-  const cable = find<HTMLElement>('[data-cable]');
-  const wire = find<SVGPathElement>('.wire', cable);
-  const tangleNote = find<SVGTextElement>('.note-tangle', cable);
-  const runNotes = findAll<SVGTextElement>('.note-run', cable);
-  const doodles = findAll<SVGGElement>('.doodle', cable);
-  const plug = find<SVGGElement>('.plug', cable);
-  const ring = find<SVGCircleElement>('.spark', cable);
+  // The cable is drawn twice, for the desktop and for the phone, and only one of
+  // the two drawings shows. Both are drawn in, so whichever is seen is right.
+  const cable = ':is([data-cable], [data-cable-phone])';
+  const wires = findAll<SVGPathElement>(`${cable} .wire`);
+  const tangleNotes = findAll<SVGTextElement>(`${cable} .note-tangle`);
+  const runNotes = findAll<SVGTextElement>(`${cable} .note-run`);
+  const doodleRows = findAll<SVGSVGElement>(`${cable} svg`).map((drawing) =>
+    findAll<SVGGElement>('.doodle', drawing),
+  );
+  const plugs = findAll<SVGGElement>(`${cable} .plug`);
+  const rings = findAll<SVGCircleElement>(`${cable} .spark`);
   const screen = find<HTMLElement>('[data-screen]');
   const media = find<HTMLElement>('.media', screen);
   const glare = find<HTMLElement>('.crt', screen);
@@ -218,9 +232,11 @@ export function createPageOpening(
   const parts: Part[] = [
     { el: top, ease: ['opacity', 'transform'] },
     { el: set, ease: ['opacity', 'transform'] },
-    { el: wire, ease: ['strokeDashoffset'], hold: ['strokeDasharray'] },
-    ...[tangleNote, ...runNotes, ...doodles, plug].map((el): Part => ({ el, ease: ['opacity'] })),
-    { el: ring, ease: ['opacity'], hold: ['transform'] },
+    ...wires.map((el): Part => ({ el, ease: ['strokeDashoffset'], hold: ['strokeDasharray'] })),
+    ...[...tangleNotes, ...runNotes, ...doodleRows.flat(), ...plugs].map(
+      (el): Part => ({ el, ease: ['opacity'] }),
+    ),
+    ...rings.map((el): Part => ({ el, ease: ['opacity'], hold: ['transform'] })),
     { el: glare, ease: ['opacity', 'transform'] },
     // The finished rail is not clipped at all, which nothing can be eased to.
     { el: rail, ease: ['clipPath'], to: { clipPath: 'inset(0 0 0 0)' } },
@@ -293,34 +309,44 @@ export function createPageOpening(
   // that pulses out from it.
   function drawCable(): void {
     letGoOfRisen();
-    animate(wire, WIRE_FRAMES, { duration: WIRE_MS, delay: WIRE_AFTER_MS, easing: WIRE_EASING });
-    animate(tangleNote, APPEAR_FRAMES, {
-      duration: NOTE_MS,
-      delay: SECOND_NOTE_AFTER_MS,
-      easing: 'ease',
-    });
-    doodles.forEach((doodle, index) => {
-      animate(doodle, APPEAR_FRAMES, {
-        duration: DOODLE_MS,
-        delay: FIRST_DOODLE_AFTER_MS + index * DOODLE_EVERY_MS,
+    for (const wire of wires) {
+      animate(wire, WIRE_FRAMES, { duration: WIRE_MS, delay: WIRE_AFTER_MS, easing: WIRE_EASING });
+    }
+    for (const note of tangleNotes) {
+      animate(note, APPEAR_FRAMES, {
+        duration: NOTE_MS,
+        delay: SECOND_NOTE_AFTER_MS,
         easing: 'ease',
       });
-    });
+    }
+    for (const doodles of doodleRows) {
+      doodles.forEach((doodle, index) => {
+        animate(doodle, APPEAR_FRAMES, {
+          duration: DOODLE_MS,
+          delay: FIRST_DOODLE_AFTER_MS + index * DOODLE_EVERY_MS,
+          easing: 'ease',
+        });
+      });
+    }
     for (const note of runNotes) {
       animate(note, APPEAR_FRAMES, { duration: NOTE_MS, delay: FIRST_NOTE_AFTER_MS, easing: 'ease' });
     }
-    animate(plug, APPEAR_FRAMES, {
-      duration: PLUG_FADE_MS,
-      delay: PLUG_FADE_AFTER_MS,
-      easing: 'ease',
-    });
+    for (const plug of plugs) {
+      animate(plug, APPEAR_FRAMES, {
+        duration: PLUG_FADE_MS,
+        delay: PLUG_FADE_AFTER_MS,
+        easing: 'ease',
+      });
+    }
     // The ring is not there before its moment or after it.
-    animate(ring, RING_FRAMES, {
-      duration: RING_MS,
-      delay: RING_AFTER_MS,
-      easing: 'ease-out',
-      fill: 'none',
-    });
+    for (const ring of rings) {
+      animate(ring, RING_FRAMES, {
+        duration: RING_MS,
+        delay: RING_AFTER_MS,
+        easing: 'ease-out',
+        fill: 'none',
+      });
+    }
   }
 
   // The stage becomes `on` as the flash begins. The screen stays dark for the
@@ -339,9 +365,10 @@ export function createPageOpening(
 
   function lightRail(): void {
     setStage('lit');
-    animate(rail, WIPE_FRAMES, { duration: REVEAL_MS, easing: REVEAL_EASING });
+    const axis = cast.railAxis();
+    animate(rail, WIPE_FRAMES[axis], { duration: REVEAL_MS, easing: REVEAL_EASING });
     tracks.forEach((track, index) => {
-      animate(track, TRACK_FRAMES, {
+      animate(track, TRACK_FRAMES[axis], {
         duration: REVEAL_MS,
         delay: index * SECOND_TRACK_AFTER_MS,
         easing: REVEAL_EASING,

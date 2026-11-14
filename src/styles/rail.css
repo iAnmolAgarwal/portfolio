@@ -64,10 +64,18 @@
   );
 }
 
-/* Under the pointer, or with the keyboard in it, the rail comes to full strength. */
-.rail:hover,
+/*
+ * Under the pointer, or with the keyboard in it, the rail comes to full strength.
+ * Only a pointer that hovers: a tap on a touch screen would leave it there.
+ */
 .rail:focus-visible {
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .rail:hover {
+    opacity: 1;
+  }
 }
 
 .rail:has(:focus-visible) {

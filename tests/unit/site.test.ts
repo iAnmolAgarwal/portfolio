@@ -138,6 +138,7 @@ describe('NOTES', () => {
       first: 'tried a lot of things',
       second: ['stayed for the ones', 'that fix a real problem'],
       dial: 'turn the dial',
+      dialPhone: 'tap the dial',
     });
   });
 });

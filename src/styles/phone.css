@@ -1,0 +1,386 @@
+/*
+ * The phone layout: one column for a window held upright, from a phone to a small
+ * tablet. The query matches `PHONE_QUERY` in `scripts/layout.ts`.
+ *
+ * Top to bottom: the name with the three logos, the set across the width, the
+ * project's words under it, the cable's band with its notes, and the rail turned
+ * into a strip along the bottom. The column is drawn 390 wide in its own unit,
+ * `--p`, and scaled as one piece, so the cable's drawing always meets the set and
+ * the band whatever the size. Only the space above and below the middle group
+ * stretches.
+ *
+ * Heights at 390 wide (in `--p`): top 16, name and line 47, at least 36 above the
+ * set, the set 185.5, 28, the words 120 (70 without the line), 16 and the band
+ * 92 (66 without the drawings; neither without the cable), at least 16, the strip
+ * 120, bottom 12: about 689 in all. The script measures the column at each level
+ * of `data-give` and picks the first that fits the visible height; past the last
+ * it scales the column down by `--fit-h`. Without the script nothing is given up
+ * and the column is scaled to fit by the 690 below.
+ */
+
+@media (max-width: 820px) and (orientation: portrait) {
+  :root {
+    --p: min(var(--vw) / 390, var(--vh) / var(--fit-h, 690), 1.45px);
+    --tv-w: calc(342 * var(--p));
+    /* The set's own unit, which its drawing is sized in. */
+    --u: calc(var(--tv-w) / 777.6);
+    /* The gap from the set's foot to the words, and the words' height. */
+    --to-words: calc(28 * var(--p));
+    --words-h: calc(120 * var(--p));
+    --to-band: calc(16 * var(--p));
+    --band: calc(92 * var(--p));
+  }
+
+  html[data-give='1'] {
+    --band: calc(66 * var(--p));
+  }
+
+  html:is([data-give='2'], [data-give='3']) {
+    --band: 0px;
+    --to-band: 0px;
+  }
+
+  html[data-give='3'] {
+    --words-h: calc(70 * var(--p));
+  }
+
+  /* Measured at full width with nothing stretched (see `scripts/layout.ts`). */
+  html[data-measuring] {
+    --p: min(var(--vw) / 390, 1.45px);
+  }
+
+  html[data-measuring] body {
+    height: auto;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: var(--vh);
+    padding: calc(16 * var(--p)) 0 calc(12 * var(--p));
+  }
+
+  /* Links rise and underline by the column's unit, not the set's. */
+  .link {
+    --rise: max(1px, round(calc(2 * var(--p)), 1px));
+    --under: calc(2 * var(--p));
+  }
+
+  /* ---------- the name, its line, and the three logos ---------- */
+
+  /* The logos share the name's line; what he is runs beneath both. */
+  .top {
+    position: relative;
+    inset: auto;
+    flex: none;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    width: var(--tv-w);
+  }
+
+  .who {
+    display: contents;
+  }
+
+  .name {
+    font-size: calc(26 * var(--p));
+  }
+
+  .tagline {
+    grid-column: 1 / -1;
+    margin-top: calc(3 * var(--p));
+    font-size: max(11px, calc(12 * var(--p)));
+  }
+
+  /*
+   * Each logo is a 44-pixel target, laid edge to edge. They stand out of the
+   * name's line above and below without making it taller, and the last logo
+   * lines up with the set's right edge.
+   */
+  .links {
+    --logo: calc(19 * var(--p));
+    grid-row: 1;
+    grid-column: 2;
+    gap: 0;
+    margin: calc((var(--logo) - 44px) / 2);
+    margin-left: 0;
+  }
+
+  .top .link {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .top .link svg {
+    width: var(--logo);
+    height: var(--logo);
+  }
+
+  .top .link::after {
+    display: none;
+  }
+
+  /* The names are for screen readers only. */
+  .top .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* ---------- the middle: the set, the words, the cable's band ---------- */
+
+  .stage {
+    position: relative;
+    inset: auto;
+    flex: 1 0 auto;
+    gap: 0;
+    width: 100%;
+    padding: calc(36 * var(--p)) 0 calc(16 * var(--p));
+  }
+
+  .panel {
+    width: 15%;
+  }
+
+  .now {
+    height: var(--words-h);
+    margin-top: var(--to-words);
+    margin-bottom: calc(var(--to-band) + var(--band));
+  }
+
+  .now-title {
+    font-size: calc(34 * var(--p));
+  }
+
+  /* Two lines, always: the band below is drawn to meet the words where they end. */
+  .now-lines {
+    height: calc(42 * var(--p));
+    margin-top: calc(8 * var(--p));
+    font-size: calc(14 * var(--p));
+  }
+
+  .now-links {
+    gap: calc(28 * var(--p));
+    margin-top: calc(14 * var(--p));
+  }
+
+  .now-links .link {
+    gap: calc(8 * var(--p));
+    padding: calc(4 * var(--p)) 0;
+    font-size: calc(14 * var(--p));
+  }
+
+  /* "tap the dial", just under the set's right side, its arrow up at the dial. */
+  .hint {
+    display: flex;
+    align-items: flex-end;
+    gap: calc(2 * var(--p));
+    left: auto;
+    right: calc(8 * var(--p));
+    top: calc(100% + 4 * var(--p));
+    width: auto;
+  }
+
+  .hint .desk {
+    display: none;
+  }
+
+  .hint .phone {
+    display: block;
+  }
+
+  .hint svg.phone {
+    order: 1;
+    width: calc(12 * var(--p));
+    height: calc(19.5 * var(--p));
+  }
+
+  .hint em.phone {
+    margin: 0 0 calc(1 * var(--p));
+    font-size: max(12px, calc(16 * var(--p)));
+    white-space: nowrap;
+  }
+
+  html:not([data-stage='done']) .hint {
+    transform: translateY(calc(-4 * var(--p)));
+  }
+
+  /* A tap steps the channel; nothing is dragged, so the page may pan over it. */
+  .knob[data-dial] {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  /*
+   * The cable's band lies under the words. The box is the band; the drawing
+   * reaches up out of it, along the margin, to the plug on the set's side.
+   */
+  [data-cable] {
+    display: none;
+  }
+
+  .cable-phone {
+    display: block;
+    left: 0;
+    top: calc(100% + var(--to-words) + var(--words-h) + var(--to-band));
+    width: var(--tv-w);
+    height: var(--band);
+  }
+
+  .cable-phone svg {
+    position: absolute;
+    left: 0;
+    top: calc(-230 * var(--p));
+    width: calc(360 * var(--p));
+  }
+
+  /* The mascot is a little larger against the set than on the desktop. */
+  .mascot {
+    --u: calc(30 / 54 * var(--p));
+  }
+
+  /* ---------- the rail, turned into a strip along the bottom ---------- */
+
+  .results {
+    position: relative;
+    inset: auto;
+    flex: none;
+    width: var(--tv-w);
+    height: calc(120 * var(--p));
+  }
+
+  .trk {
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 1px;
+    transform-origin: left center;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in srgb, var(--ink) 34%, transparent) 10%,
+      color-mix(in srgb, var(--ink) 34%, transparent) 90%,
+      transparent
+    );
+  }
+
+  .trk:first-child {
+    top: 0;
+    bottom: auto;
+  }
+
+  .trk:last-child {
+    top: auto;
+    bottom: 0;
+  }
+
+  .rail {
+    left: 0;
+    right: 0;
+    top: calc(8 * var(--p));
+    bottom: calc(8 * var(--p));
+    width: auto;
+    --rail-fade: 9%;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--rail-fade),
+      #000 calc(100% - var(--rail-fade)),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--rail-fade),
+      #000 calc(100% - var(--rail-fade)),
+      transparent
+    );
+  }
+
+  .rail[data-motion='still'] {
+    --rail-fade: calc(20 * var(--p));
+    touch-action: pan-x;
+  }
+
+  .track {
+    display: flex;
+    width: max-content;
+    height: 100%;
+  }
+
+  .cards {
+    flex-direction: row;
+    gap: calc(12 * var(--p));
+    height: 100%;
+    padding: 0 calc(12 * var(--p)) 0 0;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    /* Wide enough for the longest name and its number at their smallest sizes. */
+    width: max(calc(186 * var(--p)), 180px);
+    border-radius: calc(10 * var(--p));
+  }
+
+  .card .art,
+  .card.photo .art {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    padding: 0 calc(12 * var(--p));
+  }
+
+  .card.photo img {
+    width: calc(46 * var(--p));
+    height: calc(46 * var(--p));
+  }
+
+  .card .medal {
+    height: calc(42 * var(--p));
+  }
+
+  .card .amz {
+    width: calc(96 * var(--p));
+  }
+
+  .card .drawn {
+    gap: calc(4 * var(--p));
+  }
+
+  .card .wordmark {
+    gap: calc(6 * var(--p));
+    font-size: calc(12 * var(--p));
+  }
+
+  .card .wordmark svg {
+    width: calc(19 * var(--p));
+    height: calc(15 * var(--p));
+  }
+
+  .card .graph {
+    width: calc(130 * var(--p));
+    height: calc(28 * var(--p));
+  }
+
+  .card .cap {
+    column-gap: calc(6 * var(--p));
+    padding: calc(6 * var(--p)) calc(10 * var(--p)) calc(7 * var(--p));
+    font-size: max(10px, calc(10 * var(--p)));
+  }
+
+  .card .cap b {
+    font-size: max(11px, calc(11 * var(--p)));
+  }
+
+  .card .rank {
+    font-size: calc(19 * var(--p));
+  }
+}

@@ -3,7 +3,8 @@
 // the handwritten note beside the dial. Every channel's clip is on the screen and
 // the one marked `data-on` is the one that shows. Only that one's clip is fetched
 // with the page; the others wait, behind their posters, until the set is on.
-// The note's arrow points at the dial.
+// The note's arrow points at the dial. A phone has its own, shorter note under
+// the set, whose arrow points up at the dial.
 import { CHANNELS, NOTES, type Channel } from '../data/site';
 
 interface Props {
@@ -81,6 +82,7 @@ const NUMBER_AT = [
   <div class="legs"><i></i><i></i></div>
   <div class="hint" data-hint>
     <svg
+      class="desk"
       viewBox="0 0 64 34"
       fill="none"
       stroke="currentColor"
@@ -92,6 +94,20 @@ const NUMBER_AT = [
       <path d="M58 5 C 42 1, 22 19, 3 27"></path>
       <path d="M10 18.5 L3 27 L14 28"></path>
     </svg>
-    <em>{NOTES.dial}</em>
+    <svg
+      class="phone"
+      viewBox="0 0 16 26"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 24 C 9 21, 12 13, 9.5 2"></path>
+      <path d="M5.5 6.5 L9.5 2 L13 7"></path>
+    </svg>
+    <em class="desk">{NOTES.dial}</em>
+    <em class="phone">{NOTES.dialPhone}</em>
   </div>
 </div>

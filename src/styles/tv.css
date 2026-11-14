@@ -274,11 +274,23 @@ html[data-channel='3'] {
     background 0.2s;
 }
 
-.knob[data-dial]:hover {
-  background: #fff;
-  box-shadow:
-    var(--ring),
-    0 0 0 calc(5 * var(--u)) rgba(22, 22, 26, 0.07);
+@media (hover: hover) {
+  .knob[data-dial]:hover {
+    background: #fff;
+    box-shadow:
+      var(--ring),
+      0 0 0 calc(5 * var(--u)) rgba(22, 22, 26, 0.07);
+  }
+}
+
+/* A finger's target round the dial: at least 44 pixels across, whatever its size. */
+@media (pointer: coarse) {
+  .knob[data-dial]::before {
+    content: '';
+    position: absolute;
+    inset: min(0px, 50% - 22px);
+    border-radius: 50%;
+  }
 }
 
 .knob[data-dial]:active {
@@ -381,11 +393,17 @@ html[data-touched] .hint {
   vector-effect: non-scaling-stroke;
 }
 
+/* The phone's note and arrow show only in the phone layout. */
+.hint .phone {
+  display: none;
+}
+
 .hint em {
   display: block;
   margin: calc(2 * var(--u)) 0 0 calc(26 * var(--u));
   font-family: var(--serif);
-  font-size: calc(22 * var(--u));
+  /* Never too small to read, on a window much smaller than the sheet. */
+  font-size: max(10px, calc(22 * var(--u)));
   font-style: italic;
   line-height: 1.05;
 }

@@ -1,6 +1,7 @@
 ---
 // His name on the left with what he is beneath it, and the three links out on the
-// right, each with its logo.
+// right, each with its logo. On a phone only the logos show; the names stay for
+// screen readers.
 import { PERSON, TOP_LINKS } from '../data/site';
 ---
 
@@ -44,7 +45,7 @@ import { PERSON, TOP_LINKS } from '../data/site';
               <path d="M9 13h6M9 17h6" />
             </svg>
           )}
-          {link.label}
+          <span class="label">{link.label}</span>
         </a>
       ))
     }

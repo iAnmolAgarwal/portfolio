@@ -40,18 +40,30 @@ interface Press {
   startX: number;
   startY: number;
   moved: boolean;
-  // The inline transform the dial had before the drag started turning it.
-  transformBefore: string;
+  // Whether this press may turn the dial: dragging was on when it began.
+  drags: boolean;
 }
 
-export function wireDial(
-  el: HTMLElement,
-  opts: { count: number; current(): number; onPick(index: number): void; drag: boolean },
-): void {
+export interface DialOptions {
+  count: number;
+  current(): number;
+  onPick(index: number): void;
+  /**
+   * Whether the dial can be dragged round, or only clicked or tapped. A function
+   * is asked afresh at each press, for a page whose layout can change under it.
+   */
+  drag: boolean | (() => boolean);
+}
+
+export function wireDial(el: HTMLElement, opts: DialOptions): void {
   const { count } = opts;
+  const dragOn = (): boolean => (typeof opts.drag === 'function' ? opts.drag() : opts.drag);
   let press: Press | null = null;
   // A drag ends with the browser firing `click` as well. That one is not a step.
+  // It comes straight after the drag's `pointerup`, in the same task; a click that
+  // comes any later is a click of its own.
   let ignoreNextClick = false;
+  let forgetClick: ReturnType<typeof setTimeout> | undefined;
 
   el.setAttribute('role', 'slider');
   el.setAttribute('tabindex', '0');
@@ -73,13 +85,14 @@ export function wireDial(
     return clampDragAngle(pointerAngle(dx, dy), count);
   }
 
-  // Ends the press and gives the dial's rotation back to the page.
+  // Ends the press and gives the dial's rotation back to the page, which has it
+  // pointing at whatever channel is on now.
   function release(): Press | null {
     const ended = press;
     press = null;
-    if (ended?.moved && opts.drag) {
+    if (ended?.moved && ended.drags) {
       el.removeAttribute('data-dragging');
-      el.style.transform = ended.transformBefore;
+      el.style.transform = '';
     }
     return ended;
   }
@@ -93,9 +106,9 @@ export function wireDial(
       startX: event.clientX,
       startY: event.clientY,
       moved: false,
-      transformBefore: '',
+      drags: dragOn(),
     };
-    if (!opts.drag) return;
+    if (!press.drags) return;
     try {
       // Keeps the drag alive when the pointer leaves the dial.
       el.setPointerCapture(event.pointerId);
@@ -106,19 +119,18 @@ export function wireDial(
 
   el.addEventListener('pointermove', (event) => {
     if (!press || event.pointerId !== press.pointerId) return;
+    // A move with no button down is a pointer passing over, not a drag.
+    if (event.buttons === 0) return;
     if (!press.moved) {
       // With dragging off, a finger that wobbles is still a tap. The browser only
       // sends `click` after a touch it judged to be a tap, so leave it to decide.
-      if (!opts.drag && event.pointerType === 'touch') return;
+      if (!press.drags && event.pointerType === 'touch') return;
       const travelled = Math.hypot(event.clientX - press.startX, event.clientY - press.startY);
       if (travelled <= DRAG_PX) return;
       press.moved = true;
-      if (opts.drag) {
-        press.transformBefore = el.style.transform;
-        el.setAttribute('data-dragging', '');
-      }
+      if (press.drags) el.setAttribute('data-dragging', '');
     }
-    if (opts.drag) el.style.transform = `rotate(${angleAt(event)}deg)`;
+    if (press.drags) el.style.transform = `rotate(${angleAt(event)}deg)`;
   });
 
   el.addEventListener('pointerup', (event) => {
@@ -127,18 +139,27 @@ export function wireDial(
     // A press that never moved is a click, and the click event does the step.
     if (!ended?.moved) return;
     ignoreNextClick = true;
-    if (opts.drag) pick(angleToChannel(angleAt(event), count));
+    clearTimeout(forgetClick);
+    forgetClick = setTimeout(() => {
+      ignoreNextClick = false;
+    }, 0);
+    if (ended.drags) pick(angleToChannel(angleAt(event), count));
   });
 
-  el.addEventListener('pointercancel', (event) => {
+  // A press the browser takes back, or whose capture is lost, ends with nothing picked.
+  const cancel = (event: PointerEvent): void => {
     if (press && event.pointerId === press.pointerId) release();
-  });
+  };
+  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('lostpointercapture', cancel);
 
-  el.addEventListener('click', () => {
-    if (ignoreNextClick) {
+  el.addEventListener('click', (event) => {
+    // A click from the keyboard or from a script (`detail` 0) is never a drag's.
+    if (ignoreNextClick && event.detail !== 0) {
       ignoreNextClick = false;
       return;
     }
+    ignoreNextClick = false;
     pick((opts.current() + 1) % count);
   });
 

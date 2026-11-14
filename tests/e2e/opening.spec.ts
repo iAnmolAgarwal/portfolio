@@ -11,8 +11,6 @@ import { expect, test, type Page } from '@playwright/test';
 // let run in real time and stopped again once the opening is over (`playScene`).
 // The scene itself is tested in `mascot.spec.ts`.
 
-test.skip(({ isMobile }) => isMobile, 'The desktop arrangement; the phone has its own tests.');
-
 // The opening's beats, in milliseconds after the page's script starts.
 const CABLE_MS = 500;
 const PLUG_MS = 4200;
@@ -66,12 +64,17 @@ function playing(page: Page): Promise<string[]> {
     );
 }
 
-/** How far the rail has rolled upward, in pixels. */
+/** How far the rail has rolled along its axis, in pixels: upward a column, leftward a strip. */
 function rolled(page: Page): Promise<number> {
-  return page
-    .locator('[data-rail-track]')
-    .evaluate((track) => 0 - new DOMMatrixReadOnly(getComputedStyle(track).transform).m42);
+  return page.locator('[data-rail-track]').evaluate((track) => {
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(track).transform);
+    const across = track.closest<HTMLElement>('[data-rail]')?.dataset.axis === 'x';
+    return 0 - (across ? matrix.m41 : matrix.m42);
+  });
 }
+
+/** The cable drawing for the layout the page is in: the desktop's or the phone's. */
+const CABLE = '.cable svg:visible';
 
 async function expectRailMoving(page: Page): Promise<void> {
   const from = await rolled(page);
@@ -221,13 +224,13 @@ async function expectFinished(page: Page, channel: 1 | 2 = 1): Promise<void> {
   await expect.poll(() => opacityOf(page, '[data-now]')).toBe(1);
   await expect.poll(() => opacityOf(page, '[data-hint]')).toBe(1);
   await expect.poll(() => opacityOf(page, '[data-rail]')).toBeCloseTo(0.62, 2);
-  await expect.poll(() => opacityOf(page, '[data-cable] .wire')).toBe(1);
+  await expect.poll(() => opacityOf(page, `${CABLE} .wire`)).toBe(1);
   for (const part of ['.note-tangle', '.note-run', '.doodle', '.plug']) {
-    for (const each of await page.locator(`[data-cable] ${part}`).all()) {
+    for (const each of await page.locator(`.cable ${part}`).all()) {
       await expect(each).toHaveCSS('opacity', '1');
     }
   }
-  await expect(page.locator('[data-cable] .wire')).toHaveCSS('stroke-dashoffset', '0px');
+  await expect(page.locator(`${CABLE} .wire`)).toHaveCSS('stroke-dashoffset', '0px');
   await expectNoScrollbar(page);
 }
 
@@ -262,12 +265,12 @@ test('at one second the cable is being drawn and the set is still off', async ({
   await expect.poll(() => opacityOf(page, '.top')).toBe(1);
   const drawn = (): Promise<number> =>
     page
-      .locator('[data-cable] .wire')
+      .locator(`${CABLE} .wire`)
       .evaluate((wire) => 1 - Number.parseFloat(getComputedStyle(wire).strokeDashoffset));
   await expect.poll(drawn).toBeGreaterThan(0);
   expect(await drawn()).toBeLessThan(1);
   // The plug is not in yet, and the dial points straight up at nothing in particular.
-  await expect(page.locator('[data-cable] .plug')).toHaveCSS('opacity', '0');
+  await expect(page.locator(`${CABLE} .plug`)).toHaveCSS('opacity', '0');
   expect(
     await page
       .locator('[data-dial]')
@@ -364,14 +367,16 @@ test('plays through: the cable, the plug, power, the picture, the mascot and the
 
 test.describe('a click on the page background lands on the finished page', () => {
   // Nothing is under this point: it is between the name and the links.
-  const BACKGROUND = { x: 620, y: 40 };
+  // Plain paper: between the name and the links on the desktop, under the name on a phone.
+  const background = (page: Page): { x: number; y: number } =>
+    (page.viewportSize()?.width ?? 0) < 600 ? { x: 60, y: 110 } : { x: 620, y: 40 };
 
   test('at one second, while the cable is being drawn', async ({ page }) => {
     await load(page);
     await page.clock.runFor(1000);
     await expectStage(page, 'cable');
 
-    await page.mouse.click(BACKGROUND.x, BACKGROUND.y);
+    await page.mouse.click(background(page).x, background(page).y);
     await expectFinished(page);
 
     // Nothing of the opening is still to come, and the set counts from the click.
@@ -392,7 +397,7 @@ test.describe('a click on the page background lands on the finished page', () =>
     await expect(page.locator('[data-rail]')).toBeHidden();
     expect(await rolled(page)).toBe(0);
 
-    await page.mouse.click(BACKGROUND.x, BACKGROUND.y);
+    await page.mouse.click(background(page).x, background(page).y);
     await expectFinished(page);
 
     // The set was already on: it is not switched on again, and keeps its count.
@@ -411,7 +416,7 @@ test.describe('a click on the page background lands on the finished page', () =>
     await expect.poll(() => rolled(page)).toBeGreaterThan(0);
     const before = await rolled(page);
 
-    await page.mouse.click(BACKGROUND.x, BACKGROUND.y);
+    await page.mouse.click(background(page).x, background(page).y);
     await expectFinished(page, 2);
     // The rail was not started again from the top.
     expect(await rolled(page)).toBeGreaterThanOrEqual(before);
@@ -655,7 +660,9 @@ test.describe('with reduced motion', () => {
     const last = rail.locator('.card', { hasText: 'Codeforces Specialist' }).first();
     await expect(last).not.toBeInViewport({ ratio: 1 });
     await rail.hover();
-    await page.mouse.wheel(0, 4000);
+    // Along the rail: down a column, sideways along a strip.
+    const across = (await rail.getAttribute('data-axis')) === 'x';
+    await page.mouse.wheel(across ? 4000 : 0, across ? 0 : 4000);
     await expect(last).toBeInViewport({ ratio: 1 });
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });

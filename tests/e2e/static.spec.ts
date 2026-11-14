@@ -109,9 +109,11 @@ function linesOf(locator: Locator): Promise<number> {
         .map((rect) => Math.round(rect.top)),
     );
     // A line box is at least the line height; the rects of one line share a top.
+    // The text's own height is measured, not the element's: a description is a
+    // grid item stretched to the tallest of the hidden ones beside it.
     return Math.max(
       tops.size,
-      Math.round(element.getBoundingClientRect().height / parseFloat(style.lineHeight)),
+      Math.round(range.getBoundingClientRect().height / parseFloat(style.lineHeight)),
     );
   });
 }

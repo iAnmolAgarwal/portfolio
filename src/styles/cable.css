@@ -20,11 +20,20 @@
   fill: var(--paper);
 }
 
+/* The phone's drawing shows only in the phone layout. */
+.cable-phone {
+  display: none;
+}
+
 /* The ring that pulses out when the plug goes in. Not there once it is in. */
 .cable .spark {
   opacity: 0;
   /* It grows from the plug: the centre of the circle, in the drawing's own units. */
   transform-origin: 4px 120px;
+}
+
+.cable-phone .spark {
+  transform-origin: 341.5px -220.5px;
 }
 
 /*
@@ -45,6 +54,11 @@
   font-family: var(--serif);
   font-size: 19px;
   font-style: italic;
+}
+
+/* The phone's notes are smaller, in a drawing drawn at the phone's own size. */
+.cable-phone .note {
+  font-size: 13px;
 }
 
 /*
