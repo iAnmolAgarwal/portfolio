@@ -159,11 +159,16 @@ export function startRail(root: HTMLElement, opts: RailOptions): void {
   root.scrollLeft = 0;
 
   if (opts.reduced) {
-    // A list scrolled by hand has to be reachable from the keyboard too.
+    // A list scrolled by hand has to be reachable from the keyboard too, and a
+    // place the keyboard stops at needs a name: the one the rail's column has.
     root.tabIndex = 0;
+    root.setAttribute('role', 'group');
+    root.setAttribute('aria-label', root.closest('[aria-label]')?.getAttribute('aria-label') ?? '');
     return;
   }
   root.removeAttribute('tabindex');
+  root.removeAttribute('role');
+  root.removeAttribute('aria-label');
 
   const track = root.querySelector<HTMLElement>('[data-rail-track]');
   if (track === null) return;

@@ -131,6 +131,13 @@
     display: none;
   }
 
+  /* With no underline under a logo, the keyboard's mark is an ink ring round it. */
+  .top .link:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: calc((var(--logo) - 44px) / 2 + 3px);
+    border-radius: 50%;
+  }
+
   /* The names are for screen readers only. */
   .top .label {
     position: absolute;

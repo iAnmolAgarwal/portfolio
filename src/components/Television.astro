@@ -5,7 +5,7 @@
 // with the page; the others wait, behind their posters, until the set is on.
 // The note's arrow points at the dial. A phone has its own, shorter note under
 // the set, whose arrow points up at the dial.
-import { CHANNELS, NOTES, type Channel } from '../data/site';
+import { CHANNELS, NOTES, channelValueText, type Channel } from '../data/site';
 
 interface Props {
   channel: Channel;
@@ -71,6 +71,7 @@ const NUMBER_AT = [
           aria-valuemin="1"
           aria-valuemax={CHANNELS.length}
           aria-valuenow={channel.number}
+          aria-valuetext={channelValueText(channel.number - 1)}
         >
           <span></span>
         </div>

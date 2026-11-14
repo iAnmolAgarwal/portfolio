@@ -256,3 +256,10 @@ html:not([data-stage='lit'], [data-stage='done']) .results {
 html:not([data-stage='lit'], [data-stage='done']) :is(.rail, .trk) {
   opacity: 0;
 }
+
+/* Less motion: the rail comes to full strength in a fifth of a second. */
+@media (prefers-reduced-motion: reduce) {
+  .rail {
+    transition-duration: 0.2s;
+  }
+}

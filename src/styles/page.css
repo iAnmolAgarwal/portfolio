@@ -70,9 +70,13 @@ body {
   --under: calc(2 * var(--u));
   /*
    * Every link's underline is one weight: the line's, in whole pixels, so that it
-   * lands on the pixel grid the same way wherever the link happens to sit.
+   * lands on the pixel grid the same way wherever the link happens to sit. The
+   * line is never 2px or more, so this is always 1px; it is kept tied to the line
+   * so the two stay one weight if the line's weight changes.
    */
   --under-weight: max(1px, round(down, var(--line), 1px));
+  /* The keyboard's underline: the same line at full strength, twice as heavy. */
+  --focus-weight: calc(2 * var(--under-weight));
 
   position: relative;
   display: inline-flex;
@@ -118,6 +122,7 @@ body {
 }
 
 .link:focus-visible::after {
+  height: var(--focus-weight);
   transform: scaleX(1);
 }
 
@@ -163,6 +168,23 @@ body {
     content: '';
     position: absolute;
     inset: min(0px, 50% - 22px);
+  }
+}
+
+/*
+ * Less motion: a link under the pointer or the keyboard shows its underline at
+ * once, and does not rise or tilt.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .link,
+  .link svg,
+  .link::after {
+    transition: none;
+  }
+
+  .link:is(:hover, :focus-visible, :active),
+  .link:is(:hover, :focus-visible) svg {
+    transform: none;
   }
 }
 
@@ -269,6 +291,17 @@ body {
 @media (hover: hover) {
   .now-links .link:hover::after {
     opacity: 1;
+  }
+}
+
+/* Less motion: on a channel change the words fade out and back, and do not slide. */
+@media (prefers-reduced-motion: reduce) {
+  .now,
+  .now[data-swapping] {
+    transform: none;
+    transition:
+      opacity 0.2s ease,
+      visibility 0s;
   }
 }
 

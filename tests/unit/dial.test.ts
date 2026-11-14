@@ -118,7 +118,33 @@ describe('setDialValue', () => {
   });
 });
 
+describe('setDialValue with words', () => {
+  it('writes what a screen reader says for the channel', () => {
+    const dial = fakeDial();
+    setDialValue(dial.el, 1, 'Channel 2, Worth');
+    expect(dial.attributes.get('aria-valuenow')).toBe('2');
+    expect(dial.attributes.get('aria-valuetext')).toBe('Channel 2, Worth');
+  });
+});
+
 describe('wireDial', () => {
+  it('keeps the words for a screen reader in step with the channel', () => {
+    const dial = fakeDial();
+    let current = 0;
+    wireDial(dial.el, {
+      count: 3,
+      current: () => current,
+      onPick: (index) => {
+        current = index;
+      },
+      drag: true,
+      valueText: (index) => `Channel ${index + 1}`,
+    });
+    expect(dial.attributes.get('aria-valuetext')).toBe('Channel 1');
+    dial.fire('click');
+    expect(dial.attributes.get('aria-valuetext')).toBe('Channel 2');
+  });
+
   it('describes the dial as a slider over the channels', () => {
     const dial = wired({ start: 1 });
     expect(dial.attributes.get('role')).toBe('slider');
@@ -334,6 +360,16 @@ describe('wireDial', () => {
     expect(dial.onPick).toHaveBeenLastCalledWith(0);
 
     expect(dial.onPick).toHaveBeenCalledTimes(5);
+    expect(dial.attributes.get('aria-valuenow')).toBe('1');
+  });
+
+  it('goes to the first channel on Home and the last on End', () => {
+    const dial = wired({ start: 1 });
+    const end = dial.fire('keydown', { key: 'End' });
+    expect(end.preventDefault).toHaveBeenCalled();
+    expect(dial.onPick).toHaveBeenLastCalledWith(2);
+    dial.fire('keydown', { key: 'Home' });
+    expect(dial.onPick).toHaveBeenLastCalledWith(0);
     expect(dial.attributes.get('aria-valuenow')).toBe('1');
   });
 

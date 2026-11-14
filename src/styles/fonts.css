@@ -1,0 +1,18 @@
+/*
+ * JetBrains Mono in bold draws one thing on the page: the number of the channel
+ * that is on, by the dial. So the bold is cut down to the ten digits, made with
+ *
+ *   pyftsubset node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff \
+ *     --unicodes=U+0030-0039 --flavor=woff --output-file=src/fonts/jetbrains-mono-700-digits.woff
+ *
+ * which keeps the glyphs exactly as they are and costs under 2 KB instead of 22.
+ * (SIL Open Font License 1.1, which allows a subset.)
+ */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('../fonts/jetbrains-mono-700-digits.woff') format('woff');
+  unicode-range: U+0030-0039;
+}

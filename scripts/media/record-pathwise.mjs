@@ -133,7 +133,7 @@ async function record() {
     const deckFrom = now();
     for (const at of DECK_STEPS) {
       await sleep(Math.max(0, (deckFrom + at - now()) * 1000));
-      await next.evaluate((button) => button.click());
+      await next.evaluate((button) => /** @type {HTMLElement} */ (button).click());
     }
     await sleep(Math.max(0, (deckFrom + DECK - now()) * 1000) + 200);
 

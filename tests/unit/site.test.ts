@@ -9,6 +9,8 @@ import {
   RESULTS,
   TIMING,
   TOP_LINKS,
+  META,
+  channelValueText,
 } from '../../src/data/site';
 
 const [studio, worth, pathwise] = CHANNELS;
@@ -181,5 +183,26 @@ describe('PERSON', () => {
       linkedin: 'https://linkedin.com/in/anmolagarwal26',
       resume: '/anmol-agarwal-resume.pdf',
     });
+  });
+});
+
+describe('META', () => {
+  it('names him and says only what the page says', () => {
+    expect(META.title).toBe('Anmol Agarwal');
+    expect(META.description).toBe(
+      'Anmol Agarwal: Studio, Worth and Pathwise playing as channels on a line-drawn television. Open to Summer 2027 SWE internships.',
+    );
+    expect(META.url).toBe('https://anmolagarwal.vercel.app/');
+    expect(META.image).toBe('https://anmolagarwal.vercel.app/img/og.png');
+  });
+});
+
+describe('channelValueText', () => {
+  it('says the channel number and the project', () => {
+    expect([0, 1, 2].map(channelValueText)).toEqual([
+      'Channel 1, Studio',
+      'Channel 2, Worth',
+      'Channel 3, Pathwise',
+    ]);
   });
 });

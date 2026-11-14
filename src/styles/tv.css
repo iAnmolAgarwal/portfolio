@@ -301,8 +301,9 @@ html[data-channel='3'] {
   transition: none;
 }
 
+/* The keyboard's mark: an ink ring that follows the dial round, a little clear of it. */
 .knob[data-dial]:focus-visible {
-  outline: var(--line) solid var(--ink);
+  outline: max(2px, var(--line)) solid var(--ink);
   outline-offset: calc(4 * var(--u));
 }
 
@@ -458,6 +459,41 @@ html[data-stage='on'] .dial-num {
   transition-delay: var(--picture-after, 0s);
 }
 
+/* One delay for each of the dial's transitions, in their order: transform, box-shadow, background. */
 html[data-stage='on'] .knob[data-dial] {
   transition-delay: var(--picture-after, 0s), 0s, 0s;
+}
+
+/*
+ * Less motion: the dial snaps to its channel instead of turning there, and what
+ * fades in and out does so in a fifth of a second at most. Nothing slides.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .knob[data-dial] {
+    transition:
+      box-shadow 0.2s,
+      background 0.2s;
+  }
+
+  .osd,
+  .screen::after {
+    transition-duration: 0.2s;
+  }
+
+  .dial-num {
+    transition:
+      opacity 0.2s,
+      color 0s,
+      font-weight 0s;
+  }
+
+  .hint {
+    transition: opacity 0.2s ease;
+  }
+
+  html[data-touched] .hint {
+    transition:
+      opacity 0.2s ease,
+      visibility 0s linear 0.2s;
+  }
 }

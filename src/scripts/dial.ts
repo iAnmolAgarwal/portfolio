@@ -30,9 +30,13 @@ export function clampDragAngle(angleDeg: number, count: number): number {
   return Math.min(max, Math.max(min, angleDeg));
 }
 
-/** Record the showing channel on the dial. Call it after an automatic change. */
-export function setDialValue(el: HTMLElement, index: number): void {
+/**
+ * Record the showing channel on the dial, and what a screen reader should say for
+ * it. Call it after an automatic change.
+ */
+export function setDialValue(el: HTMLElement, index: number, text?: string): void {
   el.setAttribute('aria-valuenow', String(index + 1));
+  if (text !== undefined) el.setAttribute('aria-valuetext', text);
 }
 
 interface Press {
@@ -53,6 +57,8 @@ export interface DialOptions {
    * is asked afresh at each press, for a page whose layout can change under it.
    */
   drag: boolean | (() => boolean);
+  /** What a screen reader says for a channel, such as "Channel 2, Worth". */
+  valueText?(index: number): string;
 }
 
 export function wireDial(el: HTMLElement, opts: DialOptions): void {
@@ -70,7 +76,10 @@ export function wireDial(el: HTMLElement, opts: DialOptions): void {
   el.setAttribute('aria-valuemin', '1');
   el.setAttribute('aria-valuemax', String(count));
 
-  const sync = (): void => setDialValue(el, opts.current());
+  const sync = (): void => {
+    const index = opts.current();
+    setDialValue(el, index, opts.valueText?.(index));
+  };
   sync();
 
   function pick(index: number): void {
@@ -165,12 +174,14 @@ export function wireDial(el: HTMLElement, opts: DialOptions): void {
 
   el.addEventListener('keydown', (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
-    let step = 0;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') step = 1;
-    else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') step = -1;
+    let to: number;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') to = opts.current() + 1;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') to = opts.current() - 1;
+    else if (event.key === 'Home') to = 0;
+    else if (event.key === 'End') to = count - 1;
     else return;
     event.preventDefault();
-    pick(Math.min(count - 1, Math.max(0, opts.current() + step)));
+    pick(Math.min(count - 1, Math.max(0, to)));
   });
 
   el.addEventListener('focus', sync);

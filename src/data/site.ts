@@ -39,6 +39,28 @@ export const PERSON: {
   resume: '/anmol-agarwal-resume.pdf',
 };
 
+// What the page says about itself to search engines and link previews. Every fact
+// in it is on the page. The address is where the site lives once it is switched on.
+export const META: {
+  title: string;
+  description: string;
+  url: string;
+  image: string;
+  imageAlt: string;
+} = {
+  title: PERSON.name,
+  description: `${PERSON.name}: Studio, Worth and Pathwise playing as channels on a line-drawn television. ${PERSON.tagline}.`,
+  url: 'https://anmolagarwal.vercel.app/',
+  image: 'https://anmolagarwal.vercel.app/img/og.png',
+  imageAlt: `${PERSON.name}'s page: a line-drawn television playing Studio, beside his results`,
+};
+
+/** What the dial says to a screen reader about the channel at `index`. */
+export function channelValueText(index: number): string {
+  const channel = CHANNELS[index];
+  return `Channel ${channel.number}, ${channel.title}`;
+}
+
 // The three links in the top bar, in the order they are shown.
 export const TOP_LINKS: readonly {
   id: 'github' | 'linkedin' | 'resume';

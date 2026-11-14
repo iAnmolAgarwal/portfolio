@@ -1,7 +1,7 @@
 // The page's one script. Each part of the page that moves is set up by its own
 // function or module, and they are put together at the bottom of this file.
 
-import { CHANNELS, TIMING } from '../data/site';
+import { CHANNELS, TIMING, channelValueText } from '../data/site';
 import { createChannels } from './channels';
 import { channelToAngle, setDialValue, wireDial } from './dial';
 import { find } from './dom';
@@ -26,7 +26,7 @@ type RailAxis = RailOptions['axis'];
 const WORDS_OUT_MS = 240;
 const NUDGE_MS = 1100;
 // With reduced motion a new picture fades in over the old one for this long.
-const CROSS_FADE_MS = 220;
+const CROSS_FADE_MS = 200;
 
 // A burst of static: the noise jumps about while it thins out in four steps.
 const STATIC_FRAMES: Keyframe[] = [
@@ -241,7 +241,7 @@ function initChannels(reduced: boolean, canDrag: () => boolean): Cast['set'] {
     leftWhenHeld = undefined;
     root.dataset.channel = String(CHANNELS[index].number);
     dial.style.setProperty('--dial-angle', `${channelToAngle(index)}deg`);
-    setDialValue(dial, index);
+    setDialValue(dial, index, channelValueText(index));
     if (!reduced) flashStatic();
     showClip(index);
     readOut(index);
@@ -263,6 +263,7 @@ function initChannels(reduced: boolean, canDrag: () => boolean): Cast['set'] {
     count: CHANNELS.length,
     current: controller.current,
     drag: canDrag,
+    valueText: channelValueText,
     onPick(index) {
       markTouched();
       // Picking the channel that is already on is a touch and nothing more.
