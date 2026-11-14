@@ -1,7 +1,13 @@
 ---
 // The cable on the right: a tangle at the bottom, one end running up to plug into
 // the side of the set, five small drawings of things he has tried, and two notes.
-// The line and the drawings are the approved artwork, unchanged.
+// The line is the approved artwork, unchanged. The drawings are the approved ones
+// at one and a half times their size, each scaled about its own middle.
+//
+// The notes are read from the top: the first above the drawings, the second beside
+// the tangle. Each is named for where it sits, which is what the opening keys on:
+// the note by the tangle comes in as the line starts there, the one along the run
+// as the line arrives.
 import { NOTES } from '../data/site';
 ---
 
@@ -25,35 +31,37 @@ import { NOTES } from '../data/site';
       <path d="M2 117h-4M2 123h-4" />
     </g>
     {/* contest bars */}
-    <g class="doodle" transform="translate(138 250) rotate(-8 12 12)">
+    <g class="doodle" transform="translate(150 266) rotate(-8) scale(1.5) translate(-12 -12)">
       <path d="M4 20V11M12 20V4M20 20v-6" />
     </g>
     {/* a chip */}
-    <g class="doodle" transform="translate(180 274) rotate(8 12 12)">
+    <g class="doodle" transform="translate(196 292) rotate(8) scale(1.5) translate(-12 -12)">
       <rect x="6" y="6" width="12" height="12" rx="2" />
       <path d="M9 6V3M15 6V3M9 21v-3M15 21v-3M6 9H3M6 15H3M21 9h-3M21 15h-3" />
     </g>
     {/* trading candlesticks */}
-    <g class="doodle" transform="translate(224 250) rotate(5 12 12)">
+    <g class="doodle" transform="translate(240 266) rotate(5) scale(1.5) translate(-12 -12)">
       <path d="M6 3v4M6 15v5M18 4v5M18 16v4M12 8v3M12 17v3" />
       <rect x="4" y="7" width="4" height="8" />
       <rect x="10" y="11" width="4" height="6" />
       <rect x="16" y="9" width="4" height="7" />
     </g>
     {/* a paper plane */}
-    <g class="doodle" transform="translate(258 296) rotate(-12 12 12)">
+    <g class="doodle" transform="translate(268 312) rotate(-12) scale(1.5) translate(-12 -12)">
       <path d="M21 3 3 10.5l7 2.5 2.5 7L21 3z" />
       <path d="M10 13l4-4" />
     </g>
     {/* a game controller */}
-    <g class="doodle" transform="translate(254 418) rotate(6 12 12)">
+    <g class="doodle" transform="translate(262 430) rotate(6) scale(1.5) translate(-12 -12)">
       <rect x="2.5" y="8" width="19" height="10" rx="5" />
       <path d="M7 11v4M5 13h4" />
       <circle cx="16" cy="12" r=".6" />
       <circle cx="18.2" cy="14.4" r=".6" />
     </g>
-    <text class="note note-tangle" x="206" y="232" text-anchor="middle">{NOTES.tangle}</text>
-    <text class="note note-run" x="92" y="160">{NOTES.run[0]}</text>
-    <text class="note note-run" x="92" y="182">{NOTES.run[1]}</text>
+    <text class="note note-run" x="206" y="226" text-anchor="middle">{NOTES.first}</text>
+    <text class="note note-tangle" x="144" y="366" text-anchor="end">
+      <tspan x="144">{NOTES.second[0]}</tspan>
+      <tspan x="164" dy="23">{NOTES.second[1]}</tspan>
+    </text>
   </svg>
 </div>

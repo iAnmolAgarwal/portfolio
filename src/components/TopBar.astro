@@ -1,10 +1,14 @@
 ---
-// His name on the left and the three links out on the right, each with its logo.
+// His name on the left with what he is beneath it, and the three links out on the
+// right, each with its logo.
 import { PERSON, TOP_LINKS } from '../data/site';
 ---
 
 <header class="top">
-  <h1 class="name">{PERSON.name}</h1>
+  <div class="who">
+    <h1 class="name">{PERSON.name}</h1>
+    <p class="tagline" data-tagline>{PERSON.tagline}</p>
+  </div>
   <nav class="links" aria-label="Profiles">
     {
       TOP_LINKS.map((link) => (

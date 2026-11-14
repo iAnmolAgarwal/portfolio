@@ -1,11 +1,15 @@
 /* The rail of results down the left, between its two hairline tracks. */
 
+/*
+ * It stands at the sheet's left edge and is drawn in its own unit, `--ru`: the
+ * sheet's, held up where the sheet would make the lettering too small to read.
+ */
 .results {
   position: absolute;
-  left: calc(30 * var(--u));
-  top: calc(104 * var(--u));
-  bottom: calc(16 * var(--u));
-  width: calc(233 * var(--u));
+  left: calc(var(--sheet-x) + 30 * var(--u));
+  top: calc(var(--sheet-y) + 104 * var(--u));
+  bottom: calc(var(--sheet-y) + 16 * var(--u));
+  width: calc(233 * var(--ru));
 }
 
 .trk {
@@ -34,10 +38,10 @@
 
 .rail {
   position: absolute;
-  left: calc(10 * var(--u));
+  left: calc(10 * var(--ru));
   top: 0;
   bottom: 0;
-  width: calc(212 * var(--u));
+  width: calc(212 * var(--ru));
   overflow: hidden;
   opacity: 0.62;
   transition: opacity 0.9s ease;
@@ -77,7 +81,7 @@
  * card can both be brought clear of the fades.
  */
 .rail[data-motion='still'] {
-  --rail-fade: calc(28 * var(--u));
+  --rail-fade: calc(28 * var(--ru));
   overflow: hidden auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
@@ -117,8 +121,8 @@
 .cards {
   display: flex;
   flex-direction: column;
-  gap: calc(16 * var(--u));
-  padding-bottom: calc(16 * var(--u));
+  gap: calc(16 * var(--ru));
+  padding-bottom: calc(16 * var(--ru));
   list-style: none;
 }
 
@@ -126,7 +130,7 @@
   flex: none;
   overflow: hidden;
   border: var(--line) solid var(--ink);
-  border-radius: calc(12 * var(--u));
+  border-radius: calc(12 * var(--ru));
   background: var(--paper);
 }
 
@@ -136,53 +140,53 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: calc(118 * var(--u));
-  padding: 0 calc(16 * var(--u));
+  height: calc(118 * var(--ru));
+  padding: 0 calc(16 * var(--ru));
 }
 
 .card.photo .art {
-  height: calc(176 * var(--u));
+  height: calc(176 * var(--ru));
   padding: 0;
 }
 
 .card.photo img {
   display: block;
-  width: calc(148 * var(--u));
-  height: calc(148 * var(--u));
+  width: calc(148 * var(--ru));
+  height: calc(148 * var(--ru));
   border-radius: 10%;
   object-fit: cover;
 }
 
 .card .medal {
-  height: calc(98 * var(--u));
+  height: calc(98 * var(--ru));
 }
 
 .card .amz {
-  width: calc(128 * var(--u));
+  width: calc(128 * var(--ru));
 }
 
 .card .drawn {
   flex-direction: column;
-  gap: calc(10 * var(--u));
+  gap: calc(10 * var(--ru));
 }
 
 .card .wordmark {
   display: flex;
   align-items: flex-end;
-  gap: calc(9 * var(--u));
-  font-size: calc(15 * var(--u));
+  gap: calc(9 * var(--ru));
+  font-size: calc(15 * var(--ru));
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .card .wordmark svg {
-  width: calc(30 * var(--u));
-  height: calc(24 * var(--u));
+  width: calc(30 * var(--ru));
+  height: calc(24 * var(--ru));
 }
 
 .card .graph {
-  width: calc(150 * var(--u));
-  height: calc(50 * var(--u));
+  width: calc(150 * var(--ru));
+  height: calc(50 * var(--ru));
   fill: none;
   stroke: var(--ink);
   stroke-width: 1.4;
@@ -195,25 +199,25 @@
 .card .cap {
   display: grid;
   grid-template-columns: 1fr auto;
-  column-gap: calc(8 * var(--u));
+  column-gap: calc(8 * var(--ru));
   align-items: baseline;
-  padding: calc(9 * var(--u)) calc(12 * var(--u)) calc(10 * var(--u));
+  padding: calc(9 * var(--ru)) calc(12 * var(--ru)) calc(10 * var(--ru));
   border-top: var(--line) solid var(--ink);
   color: var(--muted);
-  font-size: calc(11 * var(--u));
+  font-size: calc(11 * var(--ru));
   line-height: 1.35;
 }
 
 .card .cap b {
   color: var(--ink);
-  font-size: calc(12 * var(--u));
+  font-size: calc(12 * var(--ru));
   font-weight: 600;
 }
 
 .card .rank {
   color: var(--ink);
   font-family: var(--serif);
-  font-size: calc(24 * var(--u));
+  font-size: calc(24 * var(--ru));
   line-height: 1;
   white-space: nowrap;
 }

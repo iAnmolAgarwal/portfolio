@@ -1,7 +1,9 @@
 ---
 // The words under the set: the name of the project that is on screen, its one
-// line and its links, in that channel's colour.
-import type { Channel } from '../data/site';
+// line and its links, in that channel's colour. Every channel's line is also set
+// out of sight in the same place, so the block keeps the size of the longest and
+// nothing moves when the channel changes.
+import { CHANNELS, type Channel } from '../data/site';
 
 interface Props {
   channel: Channel;
@@ -12,7 +14,10 @@ const { channel } = Astro.props;
 
 <section class="now" data-now style={`--accent: ${channel.accent}`}>
   <h2 class="now-title" data-now-title>{channel.title}</h2>
-  <p class="now-line" data-now-line>{channel.line}</p>
+  <div class="now-lines">
+    <p class="now-line" data-now-line>{channel.line}</p>
+    {CHANNELS.map((each) => <p aria-hidden="true">{each.line}</p>)}
+  </div>
   <p class="now-links" data-now-links>
     {
       channel.links.map((link) => (

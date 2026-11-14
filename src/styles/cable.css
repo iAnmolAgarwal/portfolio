@@ -27,8 +27,16 @@
   transform-origin: 4px 120px;
 }
 
-.cable .doodle {
-  stroke-width: 1.4;
+/*
+ * The line, the plug and the small drawings are drawn at the page's one weight,
+ * which does not grow or shrink with the drawing.
+ */
+.cable svg {
+  stroke-width: var(--line);
+}
+
+.cable :is(.wire, .plug *, .doodle *) {
+  vector-effect: non-scaling-stroke;
 }
 
 .cable .note {

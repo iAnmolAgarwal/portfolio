@@ -12,23 +12,55 @@
   --sans: 'Inter Variable', Inter, system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
 
+  /* The window, measured where the browser can report the part actually visible. */
+  --vw: 100vw;
+  --vh: 100vh;
+
   /*
    * One unit of the drawing. The page is composed on a sheet 1440 wide and 844
-   * tall, and the sheet is scaled to fit the viewport, so the set, the rail, the
+   * tall, and the sheet is scaled to fit the window, so the set, the rail, the
    * cable, the mascot and the lettering all grow and shrink together. On a
    * 1440-wide window one unit is one pixel.
+   *
+   * It stops growing at 1.25 pixels, past which the AMPLIfied photo would be drawn
+   * more than a quarter larger than it is. On a narrow window it shrinks a little
+   * further than the width alone asks, to leave room for the rail held at its
+   * smallest (below).
    */
-  --u: min(100vw / 1440, 100vh / 844);
+  --u: min(var(--vw) / 1440, var(--vh) / 844, 1.25px, (var(--vw) - 233 * var(--rail-least)) / 1207);
 
-  /* The weight of every drawn line: the set's outline, the cards, the legs. */
-  --line: max(1px, calc(1.5 * var(--u)));
+  /*
+   * The rail's own unit. It is the sheet's, except that it never drops below the
+   * size that keeps the card names at 11px and their captions at 10px. When the
+   * rail is held there it is wider than the sheet would make it, and everything to
+   * its right moves over by the difference.
+   */
+  --rail-least: calc(11px / 12);
+  --ru: max(var(--u), var(--rail-least));
+  --rail-grow: calc(233 * (var(--ru) - var(--u)));
+
+  /*
+   * Where the sheet lies in the window: centred both ways. It is never taller than
+   * 900 units (a 1440x900 window exactly); a taller window gets more paper above
+   * and below.
+   */
+  --sheet-w: calc(1440 * var(--u) + var(--rail-grow));
+  --sheet-h: min(var(--vh), 900 * var(--u));
+  --sheet-x: calc((var(--vw) - var(--sheet-w)) / 2);
+  --sheet-y: calc((var(--vh) - var(--sheet-h)) / 2);
+
+  /*
+   * The weight of every drawn line: the set's outline, its legs and antenna, the
+   * dial, the cable and its doodles. 1.5 on the sheet, and never under 1.25px.
+   */
+  --line: max(1.25px, calc(1.5 * var(--u)));
 
   --tv-w: calc(777.6 * var(--u));
 }
 
-/* Follow the height that is actually visible where the browser can report it. */
 @supports (height: 100dvh) {
   :root {
-    --u: min(100dvw / 1440, 100dvh / 844);
+    --vw: 100dvw;
+    --vh: 100dvh;
   }
 }

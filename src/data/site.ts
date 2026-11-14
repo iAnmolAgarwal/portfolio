@@ -24,8 +24,16 @@ export interface Result {
   line: string;
 }
 
-export const PERSON: { name: string; github: string; linkedin: string; resume: string } = {
+export const PERSON: {
+  name: string;
+  tagline: string;
+  github: string;
+  linkedin: string;
+  resume: string;
+} = {
   name: 'Anmol Agarwal',
+  // The one line under his name: what he is.
+  tagline: 'CS undergrad · open to Summer 2027 SWE internships',
   github: 'https://github.com/iAnmolAgarwal',
   linkedin: 'https://linkedin.com/in/anmolagarwal26',
   resume: '/anmol-agarwal-resume.pdf',
@@ -135,11 +143,11 @@ export const RESULT_IMAGES: Record<
 
 export const CODEFORCES_WORDMARK = 'Codeforces';
 
-// The handwritten notes: by the cable's tangle, along its clean run (two lines),
-// and beside the dial.
-export const NOTES: { tangle: string; run: readonly [string, string]; dial: string } = {
-  tangle: 'tried a lot of things',
-  run: ['stayed for the ones', 'that fix a real problem'],
+// The handwritten notes: the two beside the cable, in the order they are read (the
+// second on two lines), and the one beside the dial.
+export const NOTES: { first: string; second: readonly [string, string]; dial: string } = {
+  first: 'tried a lot of things',
+  second: ['stayed for the ones', 'that fix a real problem'],
   dial: 'turn the dial',
 };
 

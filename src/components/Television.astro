@@ -3,6 +3,7 @@
 // the handwritten note beside the dial. Every channel's clip is on the screen and
 // the one marked `data-on` is the one that shows. Only that one's clip is fetched
 // with the page; the others wait, behind their posters, until the set is on.
+// The note's arrow points at the dial.
 import { CHANNELS, NOTES, type Channel } from '../data/site';
 
 interface Props {
@@ -11,11 +12,12 @@ interface Props {
 
 const { channel } = Astro.props;
 
-// Where each channel's number sits round the dial, in the dial drawing's own units.
+// Where the middle of each channel's number sits round the dial, as a share of the
+// dial's width from its top left corner (the dial is 1 across).
 const NUMBER_AT = [
-  { x: 17, y: 22 },
-  { x: 50, y: 8 },
-  { x: 83, y: 22 },
+  { x: -0.054, y: -0.024 },
+  { x: 0.5, y: -0.259 },
+  { x: 1.054, y: -0.024 },
 ];
 ---
 
@@ -46,20 +48,19 @@ const NUMBER_AT = [
       <div class="dial">
         <svg viewBox="0 0 100 100" aria-hidden="true">
           <circle class="dial-ring" data-ring cx="50" cy="50" r="36" pathLength="100"></circle>
-          {
-            CHANNELS.map((each, index) => (
-              <text
-                class="dial-num"
-                data-n={each.number}
-                x={NUMBER_AT[index].x}
-                y={NUMBER_AT[index].y}
-                text-anchor="middle"
-              >
-                {each.number}
-              </text>
-            ))
-          }
         </svg>
+        {
+          CHANNELS.map((each, index) => (
+            <span
+              class="dial-num"
+              data-n={each.number}
+              aria-hidden="true"
+              style={`left: ${NUMBER_AT[index].x * 100}%; top: ${NUMBER_AT[index].y * 100}%`}
+            >
+              {each.number}
+            </span>
+          ))
+        }
         <div
           class="knob"
           data-dial
@@ -88,8 +89,8 @@ const NUMBER_AT = [
       stroke-linejoin="round"
       aria-hidden="true"
     >
-      <path d="M60 30 C 44 30, 22 26, 6 8"></path>
-      <path d="M5 19 L5 7 L17 9"></path>
+      <path d="M58 5 C 42 1, 22 19, 3 27"></path>
+      <path d="M10 18.5 L3 27 L14 28"></path>
     </svg>
     <em>{NOTES.dial}</em>
   </div>

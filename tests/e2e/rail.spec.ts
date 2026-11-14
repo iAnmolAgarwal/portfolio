@@ -112,10 +112,12 @@ test.describe('the rail', () => {
     expect(wide).toBeGreaterThan(0);
     expect(await endOfLoop()).toBeCloseTo(wide, 1);
 
-    await page.setViewportSize({ width: 1000, height: 620 });
-    const narrow = await loopLength(page);
-    expect(narrow).toBeLessThan(wide * 0.8);
-    await expect.poll(endOfLoop).toBeCloseTo(narrow, 1);
+    // A larger window: the rail grows with the sheet. (On a smaller one it is held
+    // at the size that keeps its lettering readable, so it may not shrink much.)
+    await page.setViewportSize({ width: 1920, height: 1200 });
+    const larger = await loopLength(page);
+    expect(larger).toBeGreaterThan(wide * 1.2);
+    await expect.poll(endOfLoop).toBeCloseTo(larger, 1);
   });
 });
 

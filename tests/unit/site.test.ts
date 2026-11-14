@@ -135,8 +135,8 @@ describe('RESULT_IMAGES', () => {
 describe('NOTES', () => {
   it('carries the handwritten notes word for word', () => {
     expect(NOTES).toEqual({
-      tangle: 'tried a lot of things',
-      run: ['stayed for the ones', 'that fix a real problem'],
+      first: 'tried a lot of things',
+      second: ['stayed for the ones', 'that fix a real problem'],
       dial: 'turn the dial',
     });
   });
@@ -172,9 +172,10 @@ describe('TIMING', () => {
 });
 
 describe('PERSON', () => {
-  it('names him and points at his profiles and the résumé served by the site', () => {
+  it('names him, says what he is, and points at his profiles and the résumé served by the site', () => {
     expect(PERSON).toEqual({
       name: 'Anmol Agarwal',
+      tagline: 'CS undergrad · open to Summer 2027 SWE internships',
       github: 'https://github.com/iAnmolAgarwal',
       linkedin: 'https://linkedin.com/in/anmolagarwal26',
       resume: '/anmol-agarwal-resume.pdf',

@@ -44,14 +44,18 @@
   background: var(--ink);
 }
 
-/* The paper fill lets the mascot and the plug's prongs hide behind the body. */
+/*
+ * The paper fill lets the mascot and the plug's prongs hide behind the body. Its
+ * outline is a ring drawn inside the box rather than a border: a border is cut
+ * to whole pixels, and the set would come out lighter than the lines around it.
+ */
 .tv-body {
   position: relative;
   z-index: 2;
   display: flex;
   gap: 2.4%;
   padding: 2.6%;
-  border: var(--line) solid var(--ink);
+  box-shadow: inset 0 0 0 var(--line) var(--ink);
   border-radius: calc(var(--tv-w) * 0.035);
   background: var(--paper);
 }
@@ -175,22 +179,27 @@
   pointer-events: none;
 }
 
+/* The numbers round the dial: 9 units of its drawing, and never under 9px. */
 .dial-num {
-  fill: var(--muted);
+  position: absolute;
+  color: var(--muted);
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: max(9px, calc(8.6 * var(--u)));
   font-weight: 500;
+  line-height: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
   /* Only the opening makes the last two wait; a channel change is immediate. */
   transition:
     opacity 0.6s,
-    fill 0s,
+    color 0s,
     font-weight 0s;
 }
 
 html[data-channel='1'] .dial-num[data-n='1'],
 html[data-channel='2'] .dial-num[data-n='2'],
 html[data-channel='3'] .dial-num[data-n='3'] {
-  fill: var(--ink);
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -198,7 +207,8 @@ html[data-channel='3'] .dial-num[data-n='3'] {
 .dial-ring {
   fill: none;
   stroke: var(--ink);
-  stroke-width: 1.6;
+  stroke-width: var(--line);
+  vector-effect: non-scaling-stroke;
   stroke-linecap: round;
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
@@ -220,9 +230,12 @@ html[data-channel='3'] {
 }
 
 .knob {
+  /* Its outline is a ring inside it, the same as the set's. */
+  --ring: inset 0 0 0 var(--line) var(--ink);
+
   position: absolute;
   inset: 0;
-  border: var(--line) solid var(--ink);
+  box-shadow: var(--ring);
   border-radius: 50%;
   background: var(--paper);
   transform: rotate(var(--dial-angle, 0deg));
@@ -263,7 +276,9 @@ html[data-channel='3'] {
 
 .knob[data-dial]:hover {
   background: #fff;
-  box-shadow: 0 0 0 calc(5 * var(--u)) rgba(22, 22, 26, 0.07);
+  box-shadow:
+    var(--ring),
+    0 0 0 calc(5 * var(--u)) rgba(22, 22, 26, 0.07);
 }
 
 .knob[data-dial]:active {
@@ -359,6 +374,11 @@ html[data-touched] .hint {
   display: block;
   width: calc(64 * var(--u));
   height: calc(34 * var(--u));
+  stroke-width: var(--line);
+}
+
+.hint path {
+  vector-effect: non-scaling-stroke;
 }
 
 .hint em {
@@ -403,7 +423,7 @@ html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged']) .dial-
 /* No channel is picked out yet, and the dial points straight up. */
 html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged'])[data-channel]
   .dial-num[data-n] {
-  fill: var(--muted);
+  color: var(--muted);
   font-weight: 500;
 }
 
