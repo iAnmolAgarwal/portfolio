@@ -41,6 +41,8 @@ interface Frame {
   stage: string;
   railSeen: boolean;
   railHover: boolean;
+  /** The rail's `clip-path`: `none` once it is fully open. */
+  railClip: string;
   beamOpacity: number;
   mascotSeen: boolean;
   /** The box the scene plays in covers the window, so nothing clips the mascot to the set. */
@@ -99,7 +101,15 @@ async function open(page: Page): Promise<void> {
       if (stage === last) return;
       last = stage;
       const wipe = rail.getAnimations().find((animation) => animation.id === 'opening');
-      const sweep = torch.getAnimations().at(-1);
+      // The scene's animations have no id. The sweep is the one that turns the
+      // torch at full size from end to end; on the way up it grows from nothing.
+      const fullSize = (frame: ComputedKeyframe): boolean =>
+        /scale\(1\)/.test(String(frame.transform));
+      const sweep = torch.getAnimations().find((animation) => {
+        const { effect } = animation;
+        const frames = effect instanceof KeyframeEffect ? effect.getKeyframes() : [];
+        return frames.length === 2 && frames.every(fullSize);
+      });
       record.changes.push({
         stage,
         t: performance.now(),
@@ -123,6 +133,7 @@ async function open(page: Page): Promise<void> {
         stage: root.dataset.stage ?? '',
         railSeen: seen(rail) && seen(rail.closest('.results') ?? rail),
         railHover: rail.matches(':hover'),
+        railClip: getComputedStyle(rail).clipPath,
         beamOpacity: Number(getComputedStyle(beam).opacity),
         mascotSeen: getComputedStyle(mascot).visibility === 'visible',
         stageIsWindow:
@@ -145,6 +156,22 @@ function readTrace(page: Page): Promise<Trace> {
 
 async function expectStage(page: Page, stage: string, timeout = 20_000): Promise<void> {
   await expect(page.locator('html')).toHaveAttribute('data-stage', stage, { timeout });
+}
+
+/**
+ * Waits, on the page's own clock and checking every frame, until `ms` after the
+ * stage first became `stage`.
+ */
+async function waitAfterStage(page: Page, stage: string, ms: number): Promise<void> {
+  await page.waitForFunction(
+    ({ stage, ms }) => {
+      const record = (window as unknown as { mascotRecord: Trace }).mascotRecord;
+      const change = record.changes.find((each) => each.stage === stage);
+      return change !== undefined && performance.now() - change.t >= ms;
+    },
+    { stage, ms },
+    { polling: 'raf', timeout: 20_000 },
+  );
 }
 
 function changeAt(record: Trace, stage: string): Change {
@@ -216,9 +243,17 @@ test('the mascot peeks round the set, climbs on top and lights the rail, then go
   page,
 }) => {
   await open(page);
+  // A pointer rests where the rail will be until the rail is lit. The rail must
+  // not answer it before then.
+  const railMiddle = await page.locator('[data-rail]').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+  await page.mouse.move(railMiddle.x, railMiddle.y);
 
   // 1.3 s after power-on it is out, leaning round the set's left edge.
   await expectStage(page, 'mascot');
+  await page.mouse.move(railMiddle.x + 4, railMiddle.y + 4);
   await expect(page.locator('[data-mascot]')).toBeVisible();
   await expect(page.locator('[data-rail]')).toBeHidden();
   await expect
@@ -251,6 +286,8 @@ test('the mascot peeks round the set, climbs on top and lights the rail, then go
   // The torch comes on and the rail opens in the light; then the mascot goes and
   // the note by the dial comes in.
   await expectStage(page, 'lit', 10_000);
+  // The pointer moves off, so the finished rail is not held still under it.
+  await page.mouse.move(BACKGROUND.x, BACKGROUND.y);
   await expectStage(page, 'done', 10_000);
   await expect(page.locator('[data-hint]')).toBeVisible();
   await expectMascotGone(page);
@@ -275,9 +312,10 @@ test('the mascot peeks round the set, climbs on top and lights the rail, then go
   expect(mascot.t - on.t).toBeGreaterThanOrEqual(MASCOT_AFTER_POWER_MS - 20);
   expect(mascot.t - on.t).toBeLessThan(MASCOT_AFTER_POWER_MS + SLACK_MS);
   expect(lit.t - mascot.t).toBeGreaterThanOrEqual(TORCH_ON_MS - 100);
-  expect(lit.t - mascot.t).toBeLessThan(TORCH_ON_MS + SLACK_MS);
+  // Both come after many beats, each of which can run a little late.
+  expect(lit.t - mascot.t).toBeLessThan(TORCH_ON_MS + 2 * SLACK_MS);
   expect(done.t - mascot.t).toBeGreaterThanOrEqual(SCENE_MS - 100);
-  expect(done.t - mascot.t).toBeLessThan(SCENE_MS + 2 * SLACK_MS);
+  expect(done.t - mascot.t).toBeLessThan(SCENE_MS + 4 * SLACK_MS);
 
   // The mascot is out of sight until its stage; the rail is out of sight until the torch is on.
   expect(mascot.mascotPlaying).toBe(true);
@@ -287,7 +325,9 @@ test('the mascot peeks round the set, climbs on top and lights the rail, then go
   expect(lit.mascotPlaying).toBe(true);
   expect(done.mascotPlaying).toBe(false);
   for (const frame of record.frames) {
-    if (!['lit', 'done'].includes(frame.stage)) expect(frame).toMatchObject({ railSeen: false });
+    if (!['lit', 'done'].includes(frame.stage)) {
+      expect(frame).toMatchObject({ railSeen: false, railHover: false });
+    }
     if (!['mascot', 'lit'].includes(frame.stage)) expect(frame).toMatchObject({ mascotSeen: false });
     if (frame.mascotSeen) expect(frame).toMatchObject({ stageIsWindow: true });
     expect(frame).toMatchObject({ overflow: false });
@@ -299,6 +339,15 @@ test('the mascot peeks round the set, climbs on top and lights the rail, then go
   expect(firstRail).toBeDefined();
   expect(firstRail?.t).toBeGreaterThanOrEqual(firstLight?.t ?? Infinity);
 
+  // The rail is still opening during the sweep, and fully open once the sweep is
+  // over, well before the scene ends.
+  const sweeping = record.frames.filter((frame) => frame.t > lit.t && frame.t < lit.t + 1200);
+  expect(sweeping.length).toBeGreaterThan(0);
+  for (const frame of sweeping) expect(frame.railClip).not.toBe('none');
+  const swept = record.frames.filter((frame) => frame.t >= lit.t + 1600 && frame.t < done.t);
+  expect(swept.length).toBeGreaterThan(0);
+  for (const frame of swept) expect(frame).toMatchObject({ railClip: 'none', railSeen: true });
+
   // The rail opens in step with the sweep: started in the same frame, as long, as eased.
   expect(lit.wipe).not.toBeNull();
   expect(lit.wipe).toEqual(lit.sweep);
@@ -307,38 +356,12 @@ test('the mascot peeks round the set, climbs on top and lights the rail, then go
   expect(record.inStep?.wipe).toBe(record.inStep?.sweep);
 });
 
-test('a pointer resting where the rail will be does not touch it before it is lit', async ({
-  page,
-}) => {
-  await open(page);
-  const rail = await page.locator('[data-rail]').evaluate((el) => {
-    const box = el.getBoundingClientRect();
-    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  });
-  await page.mouse.move(rail.x, rail.y);
-  await expectStage(page, 'mascot');
-  await page.mouse.move(rail.x + 4, rail.y + 4);
-  await expectStage(page, 'lit', 10_000);
-
-  const record = await readTrace(page);
-  const beforeLit = record.frames.filter((frame) => !['lit', 'done'].includes(frame.stage));
-  expect(beforeLit.length).toBeGreaterThan(0);
-  for (const frame of beforeLit) expect(frame).toMatchObject({ railHover: false, railSeen: false });
-});
-
 test.describe('a skip during the scene lands on the finished page', () => {
   test('in the middle of the sweep', async ({ page }) => {
     await open(page);
-    await expectStage(page, 'lit');
-    await page.waitForTimeout(SWEEP_MS / 2);
-    // The light is still on and the rail still opening.
-    expect(
-      await page
-        .locator('[data-beam]')
-        .evaluate((beam) => Number(getComputedStyle(beam).opacity)),
-    ).toBeGreaterThan(0);
-    await expect(page.locator('[data-rail]')).not.toHaveCSS('clip-path', 'none');
-
+    // Timed on the page's own clock from the moment the torch came on, so the
+    // click lands mid-sweep however slowly the test itself is running.
+    await waitAfterStage(page, 'lit', SWEEP_MS * 0.4);
     await page.mouse.click(BACKGROUND.x, BACKGROUND.y);
     await expectStage(page, 'done', 1000);
     await expectMascotGone(page);
@@ -355,6 +378,13 @@ test.describe('a skip during the scene lands on the finished page', () => {
       'lit',
       'done',
     ]);
+    // The click came while the light was on and the rail still opening.
+    const lit = changeAt(record, 'lit');
+    const done = changeAt(record, 'done');
+    expect(done.t - lit.t).toBeLessThan(SWEEP_MS);
+    const lastLit = record.frames.filter((frame) => frame.stage === 'lit').at(-1);
+    expect(lastLit?.beamOpacity).toBeGreaterThan(0);
+    expect(lastLit?.railClip).not.toBe('none');
   });
 
   test('while it peeks round the set', async ({ page }) => {
