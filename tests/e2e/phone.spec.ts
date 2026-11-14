@@ -449,21 +449,32 @@ test.describe('at 390×844', () => {
     expect(off).toBeLessThanOrEqual(dial.width);
   });
 
-  test('reads the band top to bottom: the first note, the five drawings, the second note', async ({
+  test('reads the band top to bottom, the five drawings scattered round the two notes', async ({
     page,
   }) => {
     await open(page, PHONE);
     await expect(page.locator('html')).toHaveAttribute('data-give', '0');
     const first = await boxOf(page.locator('[data-cable-phone] .note-run'));
-    const drawings = await boxOf(page.locator('[data-cable-phone] .doodles'));
     const second = await boxOf(page.locator('[data-cable-phone] .note-tangle'));
-    expect(first.y + first.height).toBeLessThanOrEqual(drawings.y + 1);
-    expect(drawings.y + drawings.height).toBeLessThanOrEqual(second.y + 1);
+    expect(first.y + first.height).toBeLessThanOrEqual(second.y + 1);
     // The lines of writing share one left edge.
     expect(Math.abs(first.x - second.x)).toBeLessThanOrEqual(0.5);
     await expect(page.locator('[data-cable-phone] .doodle')).toHaveCount(5);
+    const column = await boxOf(page.locator('[data-tv]'));
     for (const doodle of await page.locator('[data-cable-phone] .doodle').all()) {
       await expect(doodle).toBeVisible();
+      // Each is clear of both notes, and inside the column and the window.
+      const box = await boxOf(doodle);
+      for (const note of [first, second]) {
+        const apart =
+          box.x >= note.x + note.width ||
+          box.x + box.width <= note.x ||
+          box.y >= note.y + note.height ||
+          box.y + box.height <= note.y;
+        expect(apart).toBe(true);
+      }
+      expect(box.x).toBeGreaterThanOrEqual(column.x);
+      expect(box.y + box.height).toBeLessThanOrEqual(PHONE.height);
     }
     // The line runs beside the words, not across them.
     const words = await boxOf(page.locator('[data-now]'));
@@ -486,18 +497,22 @@ test.describe('at 390×844', () => {
   });
 });
 
-test('on a short phone it gives up the small drawings first, and keeps the set, the words and the rail', async ({
+test('on a short phone it keeps the small drawings, the set, the words and the rail', async ({
   page,
 }) => {
-  await open(page, { width: 360, height: 620 });
-  const give = Number(await page.locator('html').getAttribute('data-give'));
-  expect(give).toBeGreaterThanOrEqual(1);
+  const size = { width: 360, height: 620 };
+  await open(page, size);
+  await expect(page.locator('html')).toHaveAttribute('data-give', '0');
   for (const hook of ['[data-tv]', '[data-now-title]', '[data-now-links]', '[data-rail]', 'header']) {
     await expect(page.locator(hook)).toBeVisible();
   }
-  await expect(page.locator('[data-cable-phone] .doodle').first()).toBeHidden();
+  for (const doodle of await page.locator('[data-cable-phone] .doodle').all()) {
+    await expect(doodle).toBeVisible();
+    const box = await boxOf(doodle);
+    expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+  }
   await expect(page.locator('[data-cable-phone] .plug')).toBeVisible();
-  // Without the drawings the two notes still read as two, a clear gap apart.
+  // The two notes read as two, a clear gap apart.
   const first = await boxOf(page.locator('[data-cable-phone] .note-run'));
   const second = await boxOf(page.locator('[data-cable-phone] .note-tangle'));
   await expect(page.locator('[data-cable-phone] .note-tangle')).toBeVisible();
@@ -510,10 +525,10 @@ test.describe('what each size gives up', () => {
   const LEVELS: [Size, number][] = [
     [PHONE, 0],
     [{ width: 360, height: 740 }, 0],
-    [{ width: 360, height: 620 }, 1],
+    [{ width: 360, height: 620 }, 0],
     [{ width: 412, height: 915 }, 0],
     [{ width: 768, height: 1024 }, 0],
-    [{ width: 390, height: 664 }, 1],
+    [{ width: 390, height: 664 }, 0],
     [{ width: 390, height: 745 }, 0],
   ];
   // How much too tall a level may be and still be kept (`GIVE_TOLERANCE_PX`).
@@ -554,12 +569,12 @@ test.describe('what each size gives up', () => {
   }
 
   test('a level a pixel or two too tall is kept, scaled down to fit', async ({ page }) => {
-    // 390 wide, the cable without its drawings needs a little over 650.
+    // 390 wide, the whole column needs a little over 650.
     await open(page, { width: 390, height: 664 });
     const heights = await needed(page);
-    const height = Math.floor(heights[1]) - 1;
+    const height = Math.floor(heights[0]) - 1;
     await page.setViewportSize({ width: 390, height });
-    await expect(page.locator('html')).toHaveAttribute('data-give', '1');
+    await expect(page.locator('html')).toHaveAttribute('data-give', '0');
     await expect(page.locator('[data-cable-phone] .note-run')).toBeVisible();
     await expectFits(page);
   });

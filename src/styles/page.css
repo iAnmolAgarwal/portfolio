@@ -319,8 +319,8 @@ body {
 
 /* ---------- what a short window gives up (`data-give`, set by the script) ---------- */
 
-/* One: the small drawings round the cable. */
-html[data-give='1'] .cable .doodle {
+/* One: the small drawings round the cable. The phone's cost no height and stay. */
+html[data-give='1'] [data-cable] .doodle {
   display: none;
 }
 
