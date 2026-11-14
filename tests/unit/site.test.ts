@@ -175,7 +175,7 @@ describe('PERSON', () => {
   it('names him, says what he is, and points at his profiles and the résumé served by the site', () => {
     expect(PERSON).toEqual({
       name: 'Anmol Agarwal',
-      tagline: 'CS undergrad · open to Summer 2027 SWE internships',
+      tagline: 'Open to Summer 2027 SWE internships',
       github: 'https://github.com/iAnmolAgarwal',
       linkedin: 'https://linkedin.com/in/anmolagarwal26',
       resume: '/anmol-agarwal-resume.pdf',
