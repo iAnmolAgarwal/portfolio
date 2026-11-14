@@ -191,9 +191,7 @@ describe('PERSON', () => {
 describe('META', () => {
   it('names him and says only what the page says', () => {
     expect(META.title).toBe('Anmol Agarwal');
-    expect(META.description).toBe(
-      'Anmol Agarwal: Studio, Worth and Pathwise playing as channels on a line-drawn television. Open to Summer 2027 SWE internships.',
-    );
+    expect(META.description).toBe('Open to Summer 2027 SWE internships');
     expect(META.url).toBe('https://anmolagarwal.vercel.app/');
     expect(META.image).toBe('https://anmolagarwal.vercel.app/img/og.png');
   });

@@ -55,7 +55,8 @@ export const META: {
   imageAlt: string;
 } = {
   title: PERSON.name,
-  description: `${PERSON.name}: Studio, Worth and Pathwise playing as channels on a line-drawn television. ${PERSON.tagline}.`,
+  // Only his line, so it is the first thing a recruiter reads under the address (his decision, 2026-11-14).
+  description: PERSON.tagline,
   url: 'https://anmolagarwal.vercel.app/',
   image: 'https://anmolagarwal.vercel.app/img/og.png',
   imageAlt: `${PERSON.name}'s page: a line-drawn television playing Studio, beside his results`,

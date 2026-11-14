@@ -9,8 +9,7 @@ import { openFinished } from './finished';
 
 const SITE = 'https://anmolagarwal.vercel.app/';
 const TITLE = 'Anmol Agarwal';
-const DESCRIPTION =
-  'Anmol Agarwal: Studio, Worth and Pathwise playing as channels on a line-drawn television. Open to Summer 2027 SWE internships.';
+const DESCRIPTION = 'Open to Summer 2027 SWE internships';
 const PAPER = '#f6f6f3';
 const INK = 'rgb(22, 22, 26)';
 
