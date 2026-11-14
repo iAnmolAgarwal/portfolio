@@ -33,7 +33,7 @@ export const PERSON: {
 } = {
   name: 'Anmol Agarwal',
   // The one line under his name: what he is.
-  tagline: 'Open to Summer 2027 SWE internships',
+  tagline: 'Open to Summer 2027 SWE Internships',
   github: 'https://github.com/iAnmolAgarwal',
   linkedin: 'https://linkedin.com/in/anmolagarwal26',
   resume: '/anmol-agarwal-resume.pdf',
