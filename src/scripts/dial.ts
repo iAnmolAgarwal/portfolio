@@ -2,6 +2,8 @@
 // keyboard input that picks one. The settled rotation of the dial is drawn by
 // whoever handles the channel change; this file only turns it during a drag.
 
+// The same 48 degrees sets the dial's resting angle per channel in `tv.css`
+// (`--dial-angle`): change both together.
 export const STEP_DEG = 48;
 
 // How far the pointer must travel before a press counts as a drag, not a click.

@@ -26,7 +26,8 @@ const NUMBER_AT = [
   <div class="antenna"><i></i><i></i></div>
   <div class="tv-body">
     <div class="screen" data-screen>
-      <div class="media">
+      {/* The words under the set say what is playing; the clips are only pictures. */}
+      <div class="media" aria-hidden="true">
         {
           CHANNELS.map((each) => (
             <video

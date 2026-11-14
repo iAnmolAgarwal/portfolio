@@ -254,8 +254,6 @@ export function createPageOpening(
   let caught: Caught | undefined;
   // When the rail starts to move, once it has been lit.
   let railRollsAt: number | undefined;
-  // Whether a skip has asked for what is still moving to be hurried along.
-  let hurryAfter = false;
 
   /**
    * Speeds up every transition still running so that it ends within the quick
@@ -270,7 +268,6 @@ export function createPageOpening(
       if (left > HURRIED_MS) animation.updatePlaybackRate((animation.playbackRate * left) / HURRIED_MS);
     }
   }
-
 
   /**
    * Starts an animation that holds its first frame until its delay is up and, by
@@ -471,7 +468,6 @@ export function createPageOpening(
     if (caught !== undefined) settle(caught);
     caught = undefined;
 
-
     if (!cast.set.isOn()) cast.set.switchOn();
     // A rail that is already moving is left alone, so that it does not jump back.
     if (railRollsAt === undefined || performance.now() < railRollsAt) {
@@ -498,12 +494,11 @@ export function createPageOpening(
       // the change starts already run at the quick pace.
       root.setAttribute('data-settling', '');
       setTimeout(() => root.removeAttribute('data-settling'), SETTLED_BY_MS);
-      hurryAfter = true;
       // Read where things are before the stage changes under them.
       if (how === 'eased') caught = catchInMidAir();
       timeline.skip();
       // Fades that were already under way at the opening's pace finish at the quick one.
-      if (hurryAfter) hurry();
+      hurry();
     },
     isDone: () => timeline.stage() === 'done',
     finished: timeline.finished,

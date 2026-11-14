@@ -504,6 +504,80 @@ test('on a short phone it gives up the small drawings first, and keeps the set, 
   expect(second.y - (first.y + first.height)).toBeGreaterThanOrEqual(8);
 });
 
+test.describe('what each size gives up', () => {
+  // Every upright size the tests use, with an iPhone's Safari with its bars
+  // shown (390×664) and hidden part-way (390×745), and the level each lands on.
+  const LEVELS: [Size, number][] = [
+    [PHONE, 0],
+    [{ width: 360, height: 740 }, 0],
+    [{ width: 360, height: 620 }, 1],
+    [{ width: 412, height: 915 }, 0],
+    [{ width: 768, height: 1024 }, 0],
+    [{ width: 390, height: 664 }, 1],
+    [{ width: 390, height: 745 }, 0],
+  ];
+  // How much too tall a level may be and still be kept (`GIVE_TOLERANCE_PX`).
+  const TOLERANCE = 3;
+
+  /** The column's height at each level, measured as the page measures it. */
+  function needed(page: Page): Promise<number[]> {
+    return page.evaluate(() => {
+      const root = document.documentElement;
+      const give = root.dataset.give;
+      const kept = [root.style.getPropertyValue('--more'), root.style.getPropertyValue('--above')];
+      root.style.removeProperty('--more');
+      root.style.removeProperty('--above');
+      root.setAttribute('data-measuring', '');
+      const heights = [0, 1, 2, 3].map((level) => {
+        root.dataset.give = String(level);
+        return document.body.getBoundingClientRect().height;
+      });
+      root.removeAttribute('data-measuring');
+      root.dataset.give = give;
+      root.style.setProperty('--more', kept[0]);
+      root.style.setProperty('--above', kept[1]);
+      return heights;
+    });
+  }
+
+  for (const [size, level] of LEVELS) {
+    test(`at ${key(size)} it gives up level ${level}, with room to spare either way`, async ({
+      page,
+    }) => {
+      await open(page, size);
+      await expect(page.locator('html')).toHaveAttribute('data-give', String(level));
+      const heights = await needed(page);
+      // A few pixels' difference in lettering on a real phone does not change the level.
+      expect(size.height + TOLERANCE - heights[level]).toBeGreaterThan(TOLERANCE + 2);
+      if (level > 0) expect(heights[level - 1] - size.height).toBeGreaterThan(TOLERANCE + 1);
+    });
+  }
+
+  test('a level a pixel or two too tall is kept, scaled down to fit', async ({ page }) => {
+    // 390 wide, the cable without its drawings needs a little over 650.
+    await open(page, { width: 390, height: 664 });
+    const heights = await needed(page);
+    const height = Math.floor(heights[1]) - 1;
+    await page.setViewportSize({ width: 390, height });
+    await expect(page.locator('html')).toHaveAttribute('data-give', '1');
+    await expect(page.locator('[data-cable-phone] .note-run')).toBeVisible();
+    await expectFits(page);
+  });
+});
+
+test.describe('at 768×1024', () => {
+  test('the paper above the antenna and under the band are even', async ({ page }) => {
+    const size = { width: 768, height: 1024 };
+    await open(page, size);
+    const strip = await boxOf(page.locator('.results'));
+    const antenna = await boxOf(page.locator('.antenna'));
+    const band = await boxOf(page.locator('[data-cable-phone]'));
+    const above = antenna.y - (strip.y + strip.height);
+    const below = size.height - (band.y + band.height);
+    expect(Math.abs(above - below)).toBeLessThanOrEqual(3);
+  });
+});
+
 test('on a phone held sideways the rail starts well under the line beneath his name', async ({
   page,
 }) => {

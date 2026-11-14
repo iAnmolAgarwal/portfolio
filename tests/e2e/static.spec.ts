@@ -554,14 +554,23 @@ test('lists the four results in the rail', async ({ page }) => {
   await openFinished(page);
   const rail = page.locator('[data-rail]');
   const results = [
-    ['HCLTech AMPLIfied', 'National Hackathon Winner'],
-    ['HackerRank Orchestrate', '24 Hr Global Hackathon'],
-    ['Amazon ML Challenge', 'Top 0.21% of 32,000+ Teams'],
-    ['Codeforces Specialist', '28 Rated Contests'],
-  ];
-  for (const [name, line] of results) {
-    await expect(rail).toContainText(name);
-    await expect(rail).toContainText(line);
+    ['HCLTech AMPLIfied', 'National Hackathon Winner', null],
+    ['HackerRank Orchestrate', '24 Hr Global Hackathon', '#6'],
+    ['Amazon ML Challenge', 'Top 0.21% of 32,000+ Teams', '#66'],
+    ['Codeforces Specialist', '28 Rated Contests', '1415'],
+  ] as const;
+  const cards = rail.locator('.cards').first().locator('.card');
+  await expect(cards).toHaveCount(results.length);
+  for (const [index, [name, line, rank]] of results.entries()) {
+    const card = cards.nth(index);
+    await expect(card.locator('.cap b')).toHaveText(name);
+    await expect(card.locator('.cap .sub')).toHaveText(line);
+    // The number on the right, where a card has one; never an empty one.
+    if (rank === null) await expect(card.locator('.rank')).toHaveCount(0);
+    else await expect(card.locator('.rank')).toHaveText(rank);
+  }
+  for (const each of await rail.locator('.rank').all()) {
+    expect((await each.textContent())?.trim()).not.toBe('');
   }
 });
 
@@ -578,4 +587,60 @@ test('hides the mascot, the cable and the beam from screen readers', async ({ pa
   for (const hook of ['[data-mascot]', '[data-cable]', '[data-beam]']) {
     await expect(page.locator(hook)).toHaveAttribute('aria-hidden', 'true');
   }
+});
+
+test('hides the clips from screen readers, with nothing to reach inside them', async ({ page }) => {
+  await openFinished(page);
+  const media = page.locator('[data-screen] .media');
+  await expect(media).toHaveAttribute('aria-hidden', 'true');
+  await expect(media.locator('video')).toHaveCount(3);
+  for (const clip of await media.locator('video').all()) {
+    expect(await clip.getAttribute('controls')).toBeNull();
+    // Not a place focus can go.
+    expect(
+      await clip.evaluate((video) => {
+        video.focus();
+        return document.activeElement === video;
+      }),
+    ).toBe(false);
+  }
+  expect(
+    await media.locator('a, button, input, [tabindex]:not([tabindex="-1"])').count(),
+  ).toBe(0);
+  // What is playing is said by the words under the set.
+  await expect(page.locator('[data-now-title]')).toHaveText('Studio');
+});
+
+test.describe('an address the site does not have', () => {
+  test('shows his name, his line and the three links, and a way back to the page', async ({
+    page,
+  }) => {
+    const response = await page.goto('/projects/old-page');
+    expect(response?.status()).toBe(404);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(PERSON.name);
+    await expect(page.locator('[data-tagline]')).toHaveText(PERSON.tagline);
+    const links = page.getByRole('banner').getByRole('link');
+    await expect(links).toHaveText(['GitHub', 'LinkedIn', 'Resume']);
+    for (const [index, href] of [PERSON.github, PERSON.linkedin, PERSON.resume].entries()) {
+      await expect(links.nth(index)).toHaveAttribute('href', href);
+      await expect(links.nth(index)).toBeVisible();
+    }
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText('Page not found');
+    const back = page.getByRole('link', { name: 'Back to the page' });
+    await expect(back).toHaveAttribute('href', '/');
+    await expect(back).toBeVisible();
+
+    // The page's paper, and no script.
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(246, 246, 243)');
+    expect(await page.locator('script').count()).toBe(0);
+    const extent = await page.evaluate(() => ({
+      over: document.documentElement.scrollHeight - window.innerHeight,
+      across: document.documentElement.scrollWidth - window.innerWidth,
+    }));
+    expect(extent).toEqual({ over: 0, across: 0 });
+
+    await back.click();
+    await expect(page).toHaveURL('/');
+    await expect(page.locator('[data-tv]')).toBeVisible();
+  });
 });

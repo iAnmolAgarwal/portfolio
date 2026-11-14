@@ -64,17 +64,17 @@ body {
 .link {
   /*
    * How far it rises: 2px on the sheet, scaled with it, in whole pixels so the
-   * risen underline stays as sharp as the resting one.
+   * risen underline stays as sharp as the resting one (rounded below).
    */
-  --rise: max(1px, round(calc(2 * var(--u)), 1px));
+  --rise: 2px;
   --under: calc(2 * var(--u));
   /*
    * Every link's underline is one weight: the line's, in whole pixels, so that it
    * lands on the pixel grid the same way wherever the link happens to sit. The
-   * line is never 2px or more, so this is always 1px; it is kept tied to the line
-   * so the two stay one weight if the line's weight changes.
+   * line is never 2px or more, so this is always 1px; below, it is kept tied to
+   * the line so the two stay one weight if the line's weight changes.
    */
-  --under-weight: max(1px, round(down, var(--line), 1px));
+  --under-weight: 1px;
   /* The keyboard's underline: the same line at full strength, twice as heavy. */
   --focus-weight: calc(2 * var(--under-weight));
 
@@ -89,6 +89,18 @@ body {
   line-height: 1;
   text-decoration: none;
   transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/*
+ * The whole-pixel versions of the two above. A browser without `round()` would
+ * find them invalid when it uses them and draw no underline at all, so it keeps
+ * the plain values instead (`.grille` in `tv.css` does the same).
+ */
+@supports (width: round(1.5px, 1px)) {
+  .link {
+    --rise: max(1px, round(calc(2 * var(--u)), 1px));
+    --under-weight: max(1px, round(down, var(--line), 1px));
+  }
 }
 
 .link svg {
@@ -365,8 +377,19 @@ html[data-stage='on'] .now:not([data-swapping]) {
  * finished place gets there in a quarter of a second, not at the opening's own
  * slower pace. The script marks the page for that moment only.
  */
-html[data-settling] :is(.now, .hint, .rail, .dial-num, .knob[data-dial], .osd),
+html[data-settling] :is(.hint, .rail, .dial-num, .knob[data-dial], .osd),
 html[data-settling] .screen::after {
   transition-duration: 0.25s !important;
+  transition-delay: 0s !important;
+}
+
+/*
+ * The words settle the same way, except that their block is shown at once
+ * (`visibility`, the third of `.now`'s transitions) while it fades and rises in,
+ * so that its links can be reached the moment the page settles. Otherwise a
+ * Shift+Tab pressed as the first key would find them still hidden and pass them by.
+ */
+html[data-settling] .now {
+  transition-duration: 0.25s, 0.25s, 0s !important;
   transition-delay: 0s !important;
 }

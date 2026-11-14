@@ -52,7 +52,7 @@ const graph = sparklinePoints(CF_RATINGS, 90, 50, 4, 3);
                 )}
                 <div class="cap">
                   <b>{result.name}</b>
-                  <span class="rank">{result.number}</span>
+                  {result.number !== null && <span class="rank">{result.number}</span>}
                   <span class="sub">{result.line}</span>
                 </div>
               </li>

@@ -363,12 +363,20 @@ test('stops changing while the page is hidden and starts a fresh 7 seconds on re
       document.dispatchEvent(new Event('visibilitychange'));
     }, hidden);
 
+  const clip = page.locator('[data-screen] video[data-on]');
+  const paused = (): Promise<boolean> => clip.evaluate((video: HTMLVideoElement) => video.paused);
+  await expect.poll(paused).toBe(false);
+
   await page.clock.runFor(5000);
   await setHidden(true);
+  // Out of sight the clip rests too.
+  expect(await paused()).toBe(true);
   await page.clock.runFor(30000);
   await expectChannel(page, 1);
+  expect(await paused()).toBe(true);
 
   await setHidden(false);
+  await expect.poll(paused).toBe(false);
   await page.clock.runFor(AUTO_MS - 1);
   await expectChannel(page, 1);
   await page.clock.runFor(1);
@@ -606,6 +614,56 @@ test('the channel readout sits on a dark plate, where it was', async ({ page }) 
   // The plate itself stays inside the screen.
   expect(plate.box.top).toBeGreaterThan(plate.screen.top);
   expect(plate.box.right).toBeLessThan(plate.screen.right);
+});
+
+test('a right-click on the dial does not hold it: the channel still changes 7 s on', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'A right-click is a mouse thing.');
+  await open(page);
+  const centre = await centreOf(page.locator('[data-dial]'));
+  await page.mouse.move(centre.x, centre.y);
+  // Its context menu can swallow the button coming back up: only the press arrives.
+  await page.mouse.down({ button: 'right' });
+  await page.clock.runFor(AUTO_MS - 1);
+  await expectChannel(page, 1);
+  await page.clock.runFor(1);
+  await expectChannel(page, 2);
+  await page.mouse.up({ button: 'right' });
+});
+
+test('a clip taken into the full-screen player is closed, and from then on the posters show', async ({
+  page,
+}) => {
+  await open(page);
+  const clips = page.locator('[data-screen] video');
+  // Stands in for an iPhone in-app browser opening its own player for the clip.
+  await page.evaluate(() => {
+    const clip = document.querySelector<HTMLVideoElement>('[data-screen] video[data-on]');
+    if (clip === null) throw new Error('No clip on.');
+    Object.assign(window, { exits: 0 });
+    Object.defineProperty(clip, 'webkitExitFullscreen', {
+      configurable: true,
+      value: () => {
+        (window as unknown as { exits: number }).exits += 1;
+      },
+    });
+    clip.dispatchEvent(new Event('webkitbeginfullscreen'));
+  });
+  expect(await page.evaluate(() => (window as unknown as { exits: number }).exits)).toBe(1);
+  const playing = (): Promise<number> =>
+    clips.evaluateAll((videos: HTMLVideoElement[]) => videos.filter((v) => !v.paused).length);
+  expect(await playing()).toBe(0);
+
+  // The channels still change; nothing plays.
+  await page.clock.runFor(AUTO_MS);
+  await expectChannel(page, 2);
+  await expectTitle(page, 'Worth');
+  expect(await playing()).toBe(0);
+  await page.locator('[data-dial]').click();
+  await expectChannel(page, 3);
+  expect(await playing()).toBe(0);
 });
 
 test('does not change channel by itself while the dial is held', async ({ page }) => {

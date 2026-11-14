@@ -14,8 +14,8 @@ const DESCRIPTION =
 const PAPER = '#f6f6f3';
 const INK = 'rgb(22, 22, 26)';
 
-// The most the page may fetch before the set powers on.
-const BUDGET_BYTES = 1.2 * 1024 * 1024;
+// The most the page may fetch before the set powers on: 1.2 MB.
+const BUDGET_BYTES = 1_200_000;
 
 // The finished page is in `dist/`, the share image and the résumé in `public/`.
 const fromRoot = (path: string): URL => new URL(`../../${path}`, import.meta.url);
@@ -180,15 +180,24 @@ test.describe('from the keyboard', () => {
     await page.keyboard.press('Tab');
     await expect(page.locator('html')).toHaveAttribute('data-stage', 'done');
     expect(await focused(page)).toBe('GitHub');
-    // The words under the set come up a frame after the skip; a person does not
-    // press Tab again inside that frame.
-    await expect(page.locator('html')).not.toHaveAttribute('data-settling');
 
     const order = ['LinkedIn', 'Resume', 'dial', 'Watch the demo', 'nothing'];
     for (const next of order) {
       await page.keyboard.press('Tab');
       expect(await focused(page)).toBe(next);
     }
+  });
+
+  test('a Shift+Tab as the very first key skips the opening and lands on the last project link', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-stage', 'off');
+
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.locator('html')).toHaveAttribute('data-stage', 'done');
+    expect(await focused(page)).toBe('Watch the demo');
+    await expect(page.locator('[data-now-links] a').last()).toBeFocused();
   });
 
   test('every stop shows a clear mark, and the pointer look is unchanged', async ({
@@ -395,6 +404,7 @@ test.describe('loading', () => {
     expect(asked).not.toContain('/media/pathwise.mp4');
 
     const total = Array.from(bytes.values()).reduce((sum, n) => sum + n, 0);
+    console.log(`fetched before power-on: ${total} bytes of ${BUDGET_BYTES}`);
     expect(total).toBeLessThan(BUDGET_BYTES);
   });
 

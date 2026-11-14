@@ -134,10 +134,14 @@ async function channelTimes(page: Page): Promise<() => Promise<number[]>> {
 
 // How late a reading taken while the clock runs in real time may be.
 const LATE_MS = 50;
+// How far ahead of its reading `playScene` stops the clock.
+const PAUSE_AHEAD_MS = 250;
 
 /**
- * Checks that the set changed by itself once while the clock ran in real time,
- * 7 s after the picture came on, and changes again 7 s after that.
+ * Checks that the set changed by itself 7 s after the picture came on, while the
+ * clock ran in real time, and again 7 s after that. The scene's length does not
+ * matter: if it ran so long that the second change also came in real time, its
+ * recorded time is checked; otherwise the clock is run on to it.
  */
 async function expectCountKept(
   page: Page,
@@ -145,14 +149,27 @@ async function expectCountKept(
   now: number,
   pictureAt: number,
 ): Promise<void> {
-  await expectChannel(page, 2);
   const [second] = await times();
   expect(second).toBeGreaterThanOrEqual(pictureAt + AUTO_MS);
   expect(second).toBeLessThan(pictureAt + AUTO_MS + LATE_MS);
-  await runTo(page, now, second + AUTO_MS - LATE_MS);
-  await expectChannel(page, 2);
-  await page.clock.runFor(LATE_MS);
-  await expectChannel(page, 3);
+  let third = (await times())[1];
+  if (third === undefined) {
+    // `second` may be read late, so the next change is due no later than this.
+    const due = second + AUTO_MS;
+    let at = now;
+    if (at < due - LATE_MS) {
+      await runTo(page, at, due - LATE_MS);
+      await expectChannel(page, 2);
+      at = due - LATE_MS;
+    }
+    expect(at).toBeLessThan(due);
+    await runTo(page, at, due);
+    await expectChannel(page, 3);
+    third = (await times())[1];
+  }
+  // Each reading is at most LATE_MS after its change was due.
+  expect(third - second).toBeGreaterThanOrEqual(AUTO_MS - LATE_MS);
+  expect(third - second).toBeLessThanOrEqual(AUTO_MS + LATE_MS);
 }
 
 async function setHidden(page: Page, hidden: boolean): Promise<void> {
@@ -181,7 +198,9 @@ async function playScene(page: Page): Promise<number> {
   await expectStage(page, 'mascot');
   await page.clock.resume();
   await expect(page.locator('html')).toHaveAttribute('data-stage', 'done', { timeout: 20_000 });
-  const now = (await page.evaluate(() => Date.now())) + 1;
+  // The clock runs on while the call to stop it is on its way, so it is stopped
+  // a little ahead of where it was read, far enough ahead to still be to come.
+  const now = (await page.evaluate(() => Date.now())) + PAUSE_AHEAD_MS;
   await page.clock.pauseAt(now);
   return now - START_MS;
 }
@@ -203,19 +222,28 @@ async function expectNoScrollbar(page: Page): Promise<void> {
   expect(extent.scrollHeight).toBeLessThanOrEqual(extent.innerHeight);
 }
 
-/** The finished page, as a skip must leave it. Moves the clock on by 400 ms. */
-async function expectFinished(page: Page, channel: 1 | 2 = 1): Promise<void> {
+/**
+ * The finished page, as a skip must leave it, on `channel` (or on whichever
+ * channel it is on, for `current`). Moves the clock on by 400 ms.
+ */
+async function expectFinished(page: Page, channel: 1 | 2 | 3 | 'current' = 1): Promise<void> {
   await expectStage(page, 'done');
   expect((await openingAnimations(page)).filter((id) => id === 'opening')).toEqual([]);
 
   await page.clock.runFor(400);
   await expect(page.locator('[data-rail]')).toBeVisible();
   await expectRailMoving(page);
-  await expectChannel(page, channel);
-  await expect.poll(() => playing(page)).toEqual([[STUDIO, '/media/worth.mp4'][channel - 1]]);
+  const on =
+    channel === 'current'
+      ? Number(await page.locator('html').getAttribute('data-channel'))
+      : channel;
+  await expectChannel(page, on as 1 | 2 | 3);
+  await expect
+    .poll(() => playing(page))
+    .toEqual([[STUDIO, '/media/worth.mp4', '/media/pathwise.mp4'][on - 1]]);
   await expect(page.locator('[data-screen] video[data-on]')).toBeVisible();
   await expect(page.locator('[data-now-title]')).toBeVisible();
-  await expect(page.locator('[data-now-title]')).toHaveText(['Studio', 'Worth'][channel - 1]);
+  await expect(page.locator('[data-now-title]')).toHaveText(['Studio', 'Worth', 'Pathwise'][on - 1]);
   await expect(page.locator('[data-hint]')).toBeVisible();
   await expect(page.locator('[data-mascot]')).toBeHidden();
 
@@ -418,7 +446,8 @@ test.describe('a click on the page background lands on the finished page', () =>
     const before = await rolled(page);
 
     await page.mouse.click(background(page).x, background(page).y);
-    await expectFinished(page, 2);
+    // On channel 2, or 3 if the scene ran long: either way the count is checked below.
+    await expectFinished(page, 'current');
     // The rail was not started again from the top.
     expect(await rolled(page)).toBeGreaterThanOrEqual(before);
 

@@ -158,6 +158,31 @@ test.describe('the rail with reduced motion', () => {
     // The page itself still does not scroll.
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
+
+  test("is a keyboard stop named by the rail's column, after the layout turns too", async ({
+    page,
+    isMobile,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await open(page);
+    const rail = page.locator('[data-rail]');
+    await expect(rail).toHaveAttribute('tabindex', '0');
+    await expect(rail).toHaveAttribute('role', 'group');
+    await expect(rail).toHaveAttribute('aria-label', 'Results');
+
+    // Turning between the two layouts sets the rail up again. Its name is read
+    // from the column each time, not from the rail's own earlier one.
+    await page.locator('aside.results').evaluate((aside) => aside.setAttribute('aria-label', 'Wins'));
+    await page.setViewportSize(isMobile ? { width: 844, height: 390 } : { width: 390, height: 844 });
+    await expect(rail).toHaveAttribute('data-axis', isMobile ? 'y' : 'x');
+    await expect(rail).toHaveAttribute('aria-label', 'Wins');
+
+    // With no name to take it has none, rather than an empty one.
+    await page.locator('aside.results').evaluate((aside) => aside.removeAttribute('aria-label'));
+    await page.setViewportSize(isMobile ? { width: 390, height: 844 } : { width: 1440, height: 900 });
+    await expect(rail).toHaveAttribute('data-axis', isMobile ? 'x' : 'y');
+    expect(await rail.getAttribute('aria-label')).toBeNull();
+  });
 });
 
 test.describe('the top links', () => {

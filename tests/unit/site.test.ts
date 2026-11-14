@@ -121,7 +121,7 @@ describe('RESULT_IMAGES', () => {
   it('gives three cards their picture and says what it shows', () => {
     expect(RESULT_IMAGES).toEqual({
       amplified: {
-        src: '/img/hcl-tile.png',
+        src: '/img/hcl-tile.jpg',
         alt: 'Anmol Agarwal, Rank 1, from the HCLTech AMPLIfied winners page',
       },
       orchestrate: { src: '/img/medal.png', alt: 'HackerRank Orchestrate gold medal' },

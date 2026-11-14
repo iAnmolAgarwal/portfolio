@@ -22,6 +22,8 @@ const SCENE_MS = 9870;
 const SWEEP_MS = 1500;
 // How late a moment may come on a busy machine.
 const SLACK_MS = 600;
+// A frame or two for a finished animation's last style to be drawn.
+const FRAME_MARGIN_MS = 50;
 
 // Nothing is under this point: it is between the name and the links.
 const BACKGROUND = { x: 620, y: 40 };
@@ -339,21 +341,27 @@ test('the mascot peeks round the set, climbs on top and lights the rail, then go
   expect(firstRail).toBeDefined();
   expect(firstRail?.t).toBeGreaterThanOrEqual(firstLight?.t ?? Infinity);
 
-  // The rail is still opening during the sweep, and fully open once the sweep is
-  // over, well before the scene ends.
-  const sweeping = record.frames.filter((frame) => frame.t > lit.t && frame.t < lit.t + 1200);
-  expect(sweeping.length).toBeGreaterThan(0);
-  for (const frame of sweeping) expect(frame.railClip).not.toBe('none');
-  const swept = record.frames.filter((frame) => frame.t >= lit.t + 1600 && frame.t < done.t);
-  expect(swept.length).toBeGreaterThan(0);
-  for (const frame of swept) expect(frame).toMatchObject({ railClip: 'none', railSeen: true });
-
   // The rail opens in step with the sweep: started in the same frame, as long, as eased.
   expect(lit.wipe).not.toBeNull();
   expect(lit.wipe).toEqual(lit.sweep);
   expect(lit.wipe?.duration).toBe(SWEEP_MS);
   expect(record.inStep).not.toBeNull();
   expect(record.inStep?.wipe).toBe(record.inStep?.sweep);
+
+  // The rail is still opening during the sweep, and fully open once the sweep is
+  // over, well before the scene ends. Both are timed from when the wipe itself
+  // started (on the same clock as the frames), however late that was.
+  const wipeFrom = record.inStep?.wipe ?? NaN;
+  const sweeping = record.frames.filter(
+    (frame) => frame.t > wipeFrom && frame.t < wipeFrom + SWEEP_MS * 0.8,
+  );
+  expect(sweeping.length).toBeGreaterThan(0);
+  for (const frame of sweeping) expect(frame.railClip).not.toBe('none');
+  const swept = record.frames.filter(
+    (frame) => frame.t >= wipeFrom + SWEEP_MS + FRAME_MARGIN_MS && frame.t < done.t,
+  );
+  expect(swept.length).toBeGreaterThan(0);
+  for (const frame of swept) expect(frame).toMatchObject({ railClip: 'none', railSeen: true });
 });
 
 test.describe('a skip during the scene lands on the finished page', () => {

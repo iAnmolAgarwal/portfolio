@@ -29,6 +29,14 @@
   width: 1px;
   /* In the opening the tracks draw downward from the top. */
   transform-origin: top center;
+  /* For browsers without `color-mix()`: the same colour, the ink at 34%. */
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(22, 22, 26, 0.34) 14%,
+    rgba(22, 22, 26, 0.34) 86%,
+    transparent
+  );
   background: linear-gradient(
     to bottom,
     transparent,

@@ -24,7 +24,10 @@ export interface MascotOptions {
 
 // ---------- the sprite ----------
 
-/** The mascot's width in page units, as `mascot.css` sets it. */
+/**
+ * The mascot's width in page units. The same 54 is its width in `mascot.css`
+ * (`.mascot`): change both together.
+ */
 const WIDTH = 54;
 /** Its height: the sprite is 18 cells wide and 10 high. */
 const HEIGHT = (WIDTH * 10) / 18;

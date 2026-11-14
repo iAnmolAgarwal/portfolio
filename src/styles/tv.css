@@ -80,6 +80,21 @@
   object-fit: cover;
 }
 
+/*
+ * The clips have no controls, and none may be drawn over them: in Low Power Mode
+ * an iPhone may refuse to play them and put its large start-playback button on
+ * the picture instead. Each rule stands alone, since a browser drops a rule
+ * whose selector it does not know.
+ */
+.media video::-webkit-media-controls {
+  display: none !important;
+}
+
+.media video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
 /* Every channel's clip is stacked here. Only the one that is on shows. */
 .media video:not([data-on]) {
   visibility: hidden;
@@ -216,7 +231,10 @@ html[data-channel='3'] .dial-num[data-n='3'] {
   transform-origin: 50% 50%;
 }
 
-/* The dial points at the channel that is on: 48 degrees a step, 2 straight up. */
+/*
+ * The dial points at the channel that is on: 48 degrees a step, 2 straight up.
+ * The step is `STEP_DEG` in `scripts/dial.ts` too: change both together.
+ */
 html[data-channel='1'] {
   --dial-angle: -48deg;
 }

@@ -160,10 +160,14 @@ export function startRail(root: HTMLElement, opts: RailOptions): void {
 
   if (opts.reduced) {
     // A list scrolled by hand has to be reachable from the keyboard too, and a
-    // place the keyboard stops at needs a name: the one the rail's column has.
+    // place the keyboard stops at needs a name: the one the rail's column (the
+    // `aside` round it) has. It is looked up there each time, not by the nearest
+    // label, which after the first call would be the rail's own.
     root.tabIndex = 0;
     root.setAttribute('role', 'group');
-    root.setAttribute('aria-label', root.closest('[aria-label]')?.getAttribute('aria-label') ?? '');
+    const label = root.closest('aside')?.getAttribute('aria-label');
+    if (label) root.setAttribute('aria-label', label);
+    else root.removeAttribute('aria-label');
     return;
   }
   root.removeAttribute('tabindex');

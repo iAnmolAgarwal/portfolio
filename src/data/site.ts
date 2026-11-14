@@ -55,6 +55,13 @@ export const META: {
   imageAlt: `${PERSON.name}'s page: a line-drawn television playing Studio, beside his results`,
 };
 
+// The page served for an address the site does not have, such as a link to the
+// old site's pages.
+export const NOT_FOUND: { title: string; back: string } = {
+  title: 'Page not found',
+  back: 'Back to the page',
+};
+
 /** What the dial says to a screen reader about the channel at `index`. */
 export function channelValueText(index: number): string {
   const channel = CHANNELS[index];
@@ -150,7 +157,7 @@ export const RESULT_IMAGES: Record<
   { src: string; alt: string }
 > = {
   amplified: {
-    src: '/img/hcl-tile.png',
+    src: '/img/hcl-tile.jpg',
     alt: 'Anmol Agarwal, Rank 1, from the HCLTech AMPLIfied winners page',
   },
   orchestrate: {

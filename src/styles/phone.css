@@ -70,8 +70,15 @@
 
   /* Links rise and underline by the column's unit, not the set's. */
   .link {
-    --rise: max(1px, round(calc(2 * var(--p)), 1px));
+    --rise: 2px;
     --under: calc(2 * var(--p));
+  }
+
+  /* In whole pixels where the browser can round (see `.link` in `page.css`). */
+  @supports (width: round(1.5px, 1px)) {
+    .link {
+      --rise: max(1px, round(calc(2 * var(--p)), 1px));
+    }
   }
 
   /* ---------- the name, its line, and the three logos ---------- */
@@ -325,6 +332,14 @@
     width: auto;
     height: 1px;
     transform-origin: left center;
+    /* For browsers without `color-mix()`; the same colour. */
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(22, 22, 26, 0.34) 10%,
+      rgba(22, 22, 26, 0.34) 90%,
+      transparent
+    );
     background: linear-gradient(
       to right,
       transparent,

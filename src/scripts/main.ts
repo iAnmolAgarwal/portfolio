@@ -126,10 +126,14 @@ function initChannels(reduced: boolean, canDrag: () => boolean): Cast['set'] {
     );
   }
 
+  // Set once a browser has taken a clip into its own full-screen player (see
+  // below). From then on the screen keeps to its posters for the rest of the visit.
+  let postersOnly = false;
+
   // If a clip cannot play, its poster is what the screen shows. It is also all
   // the screen shows for a visitor who asked for less motion.
   function play(clip: HTMLVideoElement): void {
-    if (reduced) return;
+    if (reduced || postersOnly) return;
     if (clip.error !== null) clip.load();
     clip.play().catch(() => undefined);
   }
@@ -276,6 +280,10 @@ function initChannels(reduced: boolean, canDrag: () => boolean): Cast['set'] {
   // which comes just after, starts its own wait as any turn by hand does.
   let holding: number | undefined;
   dial.addEventListener('pointerdown', (event) => {
+    // Only the main button holds the dial, as only it turns it (`dial.ts`). A
+    // right-click's context menu can swallow the button coming up again, which
+    // would leave the dial held and the set stuck on its channel.
+    if (event.button !== 0) return;
     stopNudge();
     holding = event.pointerId;
     if (dialHeld) return;
@@ -305,6 +313,19 @@ function initChannels(reduced: boolean, canDrag: () => boolean): Cast['set'] {
   dial.addEventListener('lostpointercapture', letGo);
 
   for (const clip of clips) clip.addEventListener('playing', loadTheRest, { once: true });
+
+  // Some in-app browsers on iPhones do not play video inside the page, and open
+  // their own full-screen player for a clip that is played from a tap instead.
+  // There the clip is closed at once and none is played again: the channels
+  // still change, showing their posters.
+  for (const clip of clips) {
+    clip.addEventListener('webkitbeginfullscreen', () => {
+      if (!('webkitExitFullscreen' in clip)) return;
+      postersOnly = true;
+      for (const each of clips) each.pause();
+      (clip as HTMLVideoElement & { webkitExitFullscreen: () => void }).webkitExitFullscreen();
+    });
+  }
 
   // ----- counting down to the next change, and when not to -----
 
@@ -430,8 +451,8 @@ function start(): void {
   const rail = find<HTMLElement>('[data-rail]');
 
   // The layout is measured first, so that everything after it starts from the
-  // arrangement the window is in, and so that on a resize the page is laid out
-  // again before anything else that listens for one looks at it.
+  // arrangement the window is in. On a resize, what follows the layout listens
+  // for its `LAID_OUT`, not for the resize itself.
   let layout: Layout = { phone: false, give: 0 };
   let started: PageOpening | undefined;
   // The axis the rail was last set rolling along, once it has been.
