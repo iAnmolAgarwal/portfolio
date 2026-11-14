@@ -118,10 +118,22 @@
   background: radial-gradient(ellipse at center, #ffffff 0%, #eef3ff 45%, #cfd9ff 100%);
 }
 
+/*
+ * The readout sits on a small dark plate, so that it reads over a pale picture as
+ * well as a dark one. The plate's padding is taken back out as margin, which
+ * leaves the lettering where it would be without one.
+ */
 .osd {
+  --plate-x: calc(7 * var(--u));
+  --plate-y: calc(3 * var(--u));
   position: absolute;
   top: 5%;
   right: 4.5%;
+  margin: calc(-1 * var(--plate-y)) calc(-1 * var(--plate-x)) 0 0;
+  /* The letter spacing leaves a gap after the last digit; the left side matches it. */
+  padding: var(--plate-y) var(--plate-x) var(--plate-y) calc(var(--plate-x) + 0.06em);
+  border-radius: calc(4 * var(--u));
+  background: rgba(22, 22, 26, 0.8);
   color: #e9ffe9;
   font-family: var(--mono);
   font-size: calc(14.4 * var(--u));

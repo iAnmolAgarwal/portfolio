@@ -1,7 +1,8 @@
 ---
 // The set: antenna, body, screen, the panel with the channel dial, two legs, and
 // the handwritten note beside the dial. Every channel's clip is on the screen and
-// the one marked `data-on` is the one that shows.
+// the one marked `data-on` is the one that shows. Only that one's clip is fetched
+// with the page; the others wait, behind their posters, until the set is on.
 import { CHANNELS, NOTES, type Channel } from '../data/site';
 
 interface Props {
@@ -31,7 +32,7 @@ const NUMBER_AT = [
               muted
               loop
               playsinline
-              preload="metadata"
+              preload={each.number === channel.number ? 'metadata' : 'none'}
               data-on={each.number === channel.number ? '' : undefined}
             />
           ))

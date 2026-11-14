@@ -139,6 +139,31 @@ describe('createChannels', () => {
     expect(onTune).toHaveBeenLastCalledWith(2, false);
   });
 
+  it('starts with a longer first wait when it is given one, then goes back to 7 seconds', () => {
+    const { controller, onTune } = setup();
+    controller.start(12000);
+
+    vi.advanceTimersByTime(11999);
+    expect(onTune).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(onTune).toHaveBeenCalledTimes(1);
+    expect(onTune).toHaveBeenLastCalledWith(1, false);
+
+    vi.advanceTimersByTime(AUTO_MS - 1);
+    expect(onTune).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(onTune).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it('never waits when auto is off, whatever first wait it is given', () => {
+    const { controller, onTune } = setup({ auto: false });
+    controller.start(12000);
+    vi.advanceTimersByTime(60000);
+    expect(onTune).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('keeps a single timer when start() is called twice', () => {
     const { controller, onTune } = setup();
     controller.start();

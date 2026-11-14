@@ -68,6 +68,12 @@ function initChannels(reduced: boolean): Cast['set'] {
   let touched = root.hasAttribute('data-touched');
   // Has the set been switched on. Until then nothing counts down.
   let on = false;
+  // Is the visitor reading the words under the set: the pointer is over them, or
+  // the keyboard is on one of their links. The channel waits for them.
+  let pointerOnWords = false;
+  let keyboardInWords = false;
+  // When the 20 seconds after the last turn by hand are up, on `performance.now()`.
+  let manualUntil = 0;
 
   // One of each at a time, however fast the channel is changed.
   let flash: Animation | undefined;
@@ -133,8 +139,9 @@ function initChannels(reduced: boolean): Cast['set'] {
     if (!document.hidden) play(clips[index]);
   }
 
-  // The first channel's clip loads first. The others are fetched once one clip is
-  // playing, so that each is ready by the time its channel comes round.
+  // Only the first channel's clip is fetched with the page. The others are served
+  // with `preload="none"` and are fetched once one clip is playing, which is after
+  // the set is on, so that each is ready by the time its channel comes round.
   function loadTheRest(): void {
     for (const clip of clips) clip.preload = 'auto';
   }
@@ -153,17 +160,20 @@ function initChannels(reduced: boolean): Cast['set'] {
     title.textContent = channel.title;
     line.textContent = channel.line;
     now.style.setProperty('--accent', channel.accent);
-    links.replaceChildren(
-      ...channel.links.map((link) => {
-        const a = document.createElement('a');
-        a.className = 'link';
-        a.href = link.href;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.textContent = link.label;
-        return a;
-      }),
-    );
+    // If one of the links has focus, the link that takes its place gets it, so
+    // that replacing them never drops the visitor's place on the page.
+    const focusAt = Array.from(links.children).findIndex((a) => a === document.activeElement);
+    const fresh = channel.links.map((link) => {
+      const a = document.createElement('a');
+      a.className = 'link';
+      a.href = link.href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = link.label;
+      return a;
+    });
+    links.replaceChildren(...fresh);
+    if (focusAt >= 0) fresh[Math.min(focusAt, fresh.length - 1)]?.focus({ preventScroll: true });
     wordsShown = index;
   }
 
@@ -215,6 +225,7 @@ function initChannels(reduced: boolean): Cast['set'] {
   // ----- a channel change, as the page shows it -----
 
   function draw(index: number, manual: boolean): void {
+    if (manual) manualUntil = performance.now() + TIMING.afterManualMs;
     root.dataset.channel = String(CHANNELS[index].number);
     dial.style.setProperty('--dial-angle', `${channelToAngle(index)}deg`);
     setDialValue(dial, index);
@@ -222,7 +233,8 @@ function initChannels(reduced: boolean): Cast['set'] {
     showClip(index);
     readOut(index);
     swapWords(index);
-    fillRing(manual ? TIMING.afterManualMs : TIMING.autoMs);
+    // The ring only fills while the set is counting down to a change.
+    if (counting()) fillRing(manual ? TIMING.afterManualMs : TIMING.autoMs);
     nudgeLater();
   }
 
@@ -244,23 +256,65 @@ function initChannels(reduced: boolean): Cast['set'] {
       if (index !== controller.current()) controller.tune(index, true);
     },
   });
-  // A wiggle must not carry on under the visitor's hand.
-  dial.addEventListener('pointerdown', () => wiggle?.cancel());
+  // A wiggle must not carry on, or start, under the visitor's hand.
+  dial.addEventListener('pointerdown', stopNudge);
 
   for (const clip of clips) clip.addEventListener('playing', loadTheRest, { once: true });
 
+  // ----- counting down to the next change, and when not to -----
+
+  // The set counts down to a change by itself while it is on, in sight, and the
+  // visitor is not reading the words under it.
+  function counting(): boolean {
+    return on && !document.hidden && !pointerOnWords && !keyboardInWords;
+  }
+
+  // Starts the wait for the next change afresh, or stops it, as things now stand.
+  // A fresh wait is 7 seconds, or what is left of the 20 after a turn by hand if
+  // that is longer.
+  function recount(): void {
+    if (!counting()) {
+      controller.stop();
+      fill?.cancel();
+      return;
+    }
+    const waitMs = Math.max(TIMING.autoMs, manualUntil - performance.now());
+    controller.start(waitMs);
+    fillRing(waitMs);
+  }
+
+  // Notes whether the visitor is on the words, and recounts if that has changed.
+  function reading(change: { pointer?: boolean; keyboard?: boolean }): void {
+    const was = counting();
+    pointerOnWords = change.pointer ?? pointerOnWords;
+    keyboardInWords = change.keyboard ?? keyboardInWords;
+    if (counting() !== was) recount();
+  }
+
+  now.addEventListener('pointerenter', () => reading({ pointer: true }));
+  now.addEventListener('pointerleave', () => reading({ pointer: false }));
+  // Focus counts when it is the keyboard's. A link that was clicked keeps focus
+  // long after the visitor has moved on, and must not hold the channel for ever.
+  now.addEventListener('focusin', (event) => {
+    const link = event.target;
+    reading({ keyboard: link instanceof Element && link.matches(':focus-visible') });
+  });
+  now.addEventListener('focusout', (event) => {
+    // Focus going on to another of the links is settled by the `focusin` it brings.
+    const to = event.relatedTarget;
+    if (to instanceof Node && now.contains(to)) return;
+    reading({ keyboard: false });
+  });
+
   // ----- switching on, and resting while the page is out of sight -----
 
-  // Starts the wait for the next change by itself: a fresh one every time.
   function resume(): void {
-    controller.start();
-    fillRing(TIMING.autoMs);
+    recount();
     play(clips[controller.current()]);
   }
 
   function rest(): void {
-    controller.stop();
-    fill?.cancel();
+    recount();
     stopNudge();
     clips[controller.current()].pause();
   }
@@ -276,8 +330,14 @@ function initChannels(reduced: boolean): Cast['set'] {
 
   document.addEventListener('visibilitychange', () => {
     if (!on) return;
-    if (document.hidden) rest();
-    else resume();
+    if (document.hidden) {
+      rest();
+    } else {
+      // A page that comes back into sight starts a fresh 7 seconds, whatever
+      // was left of a wait when it went.
+      manualUntil = 0;
+      resume();
+    }
   });
 
   return { isOn: () => on, switchOn, clip: clips[0] };

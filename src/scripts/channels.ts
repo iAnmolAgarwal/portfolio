@@ -2,8 +2,11 @@
 // It knows nothing about the page: every change is reported through `onTune`.
 
 export interface ChannelController {
-  /** Begin switching by itself, with a fresh `autoMs` wait. Does not tune. */
-  start(): void;
+  /**
+   * Begin switching by itself. The first change comes after `waitMs`, or after a
+   * fresh `autoMs` if none is given. Does not tune.
+   */
+  start(waitMs?: number): void;
   /** Cancel the pending automatic change. The current channel is kept. */
   stop(): void;
   current(): number;
@@ -47,9 +50,9 @@ export function createChannels(opts: {
   }
 
   return {
-    start() {
+    start(waitMs = autoMs) {
       running = true;
-      schedule(autoMs);
+      schedule(waitMs);
     },
     stop() {
       running = false;

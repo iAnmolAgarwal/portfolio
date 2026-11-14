@@ -374,3 +374,235 @@ test('stops changing while the page is hidden and starts a fresh 7 seconds on re
   await expectChannel(page, 2);
   await expectTitle(page, 'Worth');
 });
+
+// ---------- which clips are fetched, and when ----------
+
+test('only the first clip is fetched before the set is on, and the others once it is', async ({
+  page,
+}) => {
+  const asked = new Set<string>();
+  page.on('request', (request) => asked.add(new URL(request.url()).pathname));
+  const others = ['/media/worth.mp4', '/media/pathwise.mp4'];
+
+  await page.clock.install({ time: 0 });
+  await page.clock.pauseAt(1000);
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('html')).toHaveAttribute('data-stage', 'off');
+  // Every channel's still picture is there from the start; the clips are not.
+  for (const channel of CHANNELS) expect(asked).toContain(channel.poster);
+  for (const clip of others) expect(asked).not.toContain(clip);
+
+  // Still nothing while the cable draws itself.
+  await page.clock.runFor(4000);
+  await expect(page.locator('html')).toHaveAttribute('data-stage', 'cable');
+  await page.waitForLoadState('networkidle');
+  for (const clip of others) expect(asked).not.toContain(clip);
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('html')).toHaveAttribute('data-stage', 'done');
+  for (const clip of others) await expect.poll(() => asked.has(clip)).toBe(true);
+  // They arrive, ready to play, without their channel having been on.
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-screen] video')
+        .evaluateAll((videos: HTMLVideoElement[]) => videos.map((video) => video.readyState >= 3)),
+    )
+    .toEqual([true, true, true]);
+
+  await page.locator('[data-dial]').focus();
+  await page.keyboard.press('ArrowRight');
+  await expectChannel(page, 2);
+  const showing = page.locator('[data-screen] video[data-on]');
+  await expect(showing).toHaveAttribute('src', '/media/worth.mp4');
+  await expect.poll(() => showing.evaluate((video: HTMLVideoElement) => video.paused)).toBe(false);
+  await expect
+    .poll(() => showing.evaluate((video: HTMLVideoElement) => video.currentTime))
+    .toBeGreaterThan(0);
+});
+
+test('a clip that was never fetched ahead still plays when its channel comes on', async ({
+  page,
+}) => {
+  // The first clip never plays, so nothing tells the page to fetch the others.
+  await page.route('**/media/studio.mp4', (route) => route.abort());
+  await open(page);
+  await page.clock.runFor(AUTO_MS);
+  await expectChannel(page, 2);
+  const showing = page.locator('[data-screen] video[data-on]');
+  await expect(showing).toHaveAttribute('src', '/media/worth.mp4');
+  await expect
+    .poll(() => showing.evaluate((video: HTMLVideoElement) => video.currentTime))
+    .toBeGreaterThan(0);
+});
+
+// ---------- holding the channel while its words are being read ----------
+
+const away = { x: 5, y: 5 };
+
+test('holds the channel while the pointer is over the words, then waits a fresh 7 seconds', async ({
+  page,
+}) => {
+  await open(page);
+  await page.clock.runFor(3000);
+  await page.locator('[data-now]').hover();
+  await page.clock.runFor(15000);
+  await expectChannel(page, 1);
+
+  await page.mouse.move(away.x, away.y);
+  await page.clock.runFor(AUTO_MS - 1);
+  await expectChannel(page, 1);
+  await page.clock.runFor(1);
+  await expectChannel(page, 2);
+  await expectTitle(page, 'Worth');
+
+  // And it goes on changing by itself afterwards.
+  await page.clock.runFor(AUTO_MS - TEXT_MS);
+  await expectChannel(page, 3);
+});
+
+test('does not hold the channel while the pointer is over the set', async ({ page }) => {
+  await open(page);
+  await page.locator('[data-screen]').hover();
+  await page.clock.runFor(AUTO_MS - 1);
+  await expectChannel(page, 1);
+  await page.clock.runFor(1);
+  await expectChannel(page, 2);
+});
+
+test('holds the channel while keyboard focus is on a project link', async ({ page }) => {
+  await open(page);
+  await page.clock.runFor(3000);
+  await page.locator('[data-dial]').focus();
+  await page.keyboard.press('Tab');
+  const link = page.locator('[data-now-links] a').first();
+  await expect(link).toBeFocused();
+  await page.clock.runFor(15000);
+  await expectChannel(page, 1);
+  await expect(link).toBeFocused();
+
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('[data-dial]')).toBeFocused();
+  await page.clock.runFor(AUTO_MS - 1);
+  await expectChannel(page, 1);
+  await page.clock.runFor(1);
+  await expectChannel(page, 2);
+});
+
+test('a link clicked with the mouse does not go on holding the channel', async ({ page }) => {
+  await open(page);
+  // The link is given focus by the press, as a click gives it, without leaving the page.
+  const link = page.locator('[data-now-links] a').first();
+  await link.evaluate((a) => a.addEventListener('click', (event) => event.preventDefault()));
+  await link.click();
+  await expect(link).toBeFocused();
+  await page.mouse.move(away.x, away.y);
+  await page.clock.runFor(AUTO_MS - 1);
+  await expectChannel(page, 1);
+  await page.clock.runFor(1);
+  await expectChannel(page, 2);
+});
+
+test('after the words are left, the 20 seconds from a turn by hand still stand', async ({
+  page,
+}) => {
+  await open(page);
+  await page.locator('[data-dial]').click();
+  await expectChannel(page, 2);
+
+  // Over the words from 2 s to 5 s after the turn: 5 + 7 is before 20, so 20 it is.
+  await page.clock.runFor(2000);
+  await page.locator('[data-now]').hover();
+  await page.clock.runFor(3000);
+  await page.mouse.move(away.x, away.y);
+  await page.clock.runFor(AFTER_MANUAL_MS - 5000 - 1);
+  await expectChannel(page, 2);
+  await page.clock.runFor(1);
+  await expectChannel(page, 3);
+});
+
+test('words left late in the 20 seconds still get their fresh 7', async ({ page }) => {
+  await open(page);
+  await page.locator('[data-dial]').click();
+  await expectChannel(page, 2);
+
+  // Over the words from 15 s to 18 s after the turn: the change comes at 25 s.
+  await page.clock.runFor(15000);
+  await page.locator('[data-now]').hover();
+  await page.clock.runFor(3000);
+  await page.mouse.move(away.x, away.y);
+  await page.clock.runFor(AUTO_MS - 1);
+  await expectChannel(page, 2);
+  await page.clock.runFor(1);
+  await expectChannel(page, 3);
+});
+
+test('a channel change does not take keyboard focus off the project links', async ({ page }) => {
+  await open(page);
+  await page.locator('[data-dial]').focus();
+  // The channel is turned and the link reached before the words have been replaced.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Tab');
+  await expect(page.locator('[data-now-links] a').first()).toBeFocused();
+  await expectTitle(page, 'Worth');
+
+  const focused = page.locator('[data-now-links] a:focus');
+  await expect(focused).toHaveCount(1);
+  await expect(focused).toHaveAttribute('href', CHANNELS[1].links[0][1]);
+  // With focus there the channel holds.
+  await page.clock.runFor(AFTER_MANUAL_MS + AUTO_MS);
+  await expectChannel(page, 2);
+  await expect(focused).toHaveCount(1);
+});
+
+// ---------- the dial held still ----------
+
+test('the dial does not start to wiggle while it is being held', async ({ page }) => {
+  await open(page);
+  const dial = page.locator('[data-dial]');
+  const wiggling = (): Promise<boolean> =>
+    dial.evaluate((el) => el.getAnimations().some((animation) => animation.id === 'nudge'));
+
+  await page.clock.runFor(NUDGE_AFTER_MS - 100);
+  const centre = await centreOf(dial);
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.clock.runFor(1000);
+  expect(await wiggling()).toBe(false);
+  await page.mouse.up();
+});
+
+// ---------- the readout ----------
+
+test('the channel readout sits on a dark plate, where it was', async ({ page }) => {
+  await open(page);
+  const osd = page.locator('[data-osd]');
+  await expect(osd).toHaveAttribute('data-on', '');
+  const plate = await osd.evaluate((el) => {
+    const style = getComputedStyle(el);
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const text = range.getBoundingClientRect();
+    const screen = el.parentElement!.getBoundingClientRect();
+    return {
+      background: style.backgroundColor,
+      radius: parseFloat(style.borderTopLeftRadius),
+      // Where the lettering starts, as a share of the screen: 5% down from the top.
+      top: (text.top - screen.top) / screen.height,
+      right: (screen.right - text.right) / screen.width,
+      box: el.getBoundingClientRect().toJSON() as DOMRect,
+      screen: screen.toJSON() as DOMRect,
+    };
+  });
+  // Ink, most of the way to solid.
+  expect(plate.background).toMatch(/^rgba\(22, 22, 26, 0\.[6-9]\d*\)$/);
+  expect(plate.radius).toBeGreaterThan(0);
+  expect(plate.top).toBeGreaterThan(0.045);
+  expect(plate.top).toBeLessThan(0.065);
+  expect(plate.right).toBeGreaterThan(0.035);
+  expect(plate.right).toBeLessThan(0.055);
+  // The plate itself stays inside the screen.
+  expect(plate.box.top).toBeGreaterThan(plate.screen.top);
+  expect(plate.box.right).toBeLessThan(plate.screen.right);
+});
