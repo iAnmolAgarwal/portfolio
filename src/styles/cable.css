@@ -33,7 +33,8 @@
 }
 
 .cable-phone .spark {
-  transform-origin: 341.5px -220.5px;
+  /* The plug's place as `Cable.astro` draws it; the script moves both together. */
+  transform-origin: 327.5px -213.9px;
 }
 
 /*
@@ -52,14 +53,11 @@
   fill: currentColor;
   stroke: none;
   font-family: var(--serif);
+  /* `NOTE_SIZE` in `scripts/layout.ts`, which gives the notes up when too small. */
   font-size: 19px;
   font-style: italic;
 }
 
-/* The phone's notes are smaller, in a drawing drawn at the phone's own size. */
-.cable-phone .note {
-  font-size: 13px;
-}
 
 /*
  * The opening: before the cable's cue the line is undrawn, and its notes, its

@@ -417,3 +417,76 @@ test('with reduced motion the mascot never appears', async ({ page }) => {
   for (const frame of record.frames) expect(frame).toMatchObject({ mascotSeen: false });
   await expectMascotGone(page);
 });
+
+test('peeking, the mascot is behind the set: the set covers the part of it that is round the edge', async ({
+  page,
+}) => {
+  await open(page);
+  await expectStage(page, 'mascot');
+  // Halfway into the peek's hold, after it has leaned out.
+  await page.waitForTimeout(900);
+  const order = await page.evaluate(() => {
+    const mascot = document.querySelector<HTMLElement>('[data-mascot]');
+    const body = document.querySelector<HTMLElement>('.tv-body');
+    const scene = mascot?.parentElement;
+    const stage = document.querySelector<HTMLElement>('.stage');
+    if (!mascot || !body || !scene || !stage) throw new Error('A hook is missing.');
+    // Nothing between either of them and the stage makes a stacking order of its own.
+    const plain = (from: HTMLElement): boolean => {
+      for (let at = from.parentElement; at !== null && at !== stage; at = at.parentElement) {
+        const style = getComputedStyle(at);
+        const own =
+          style.zIndex !== 'auto' ||
+          style.transform !== 'none' ||
+          Number(style.opacity) < 1 ||
+          style.isolation === 'isolate' ||
+          style.filter !== 'none';
+        if (own) return false;
+      }
+      return true;
+    };
+    const m = mascot.getBoundingClientRect();
+    const b = body.getBoundingClientRect();
+    return {
+      overlap: m.right - b.left,
+      scene: Number(getComputedStyle(scene).zIndex),
+      body: Number(getComputedStyle(body).zIndex),
+      bodyFill: getComputedStyle(body).backgroundColor,
+      plain: plain(scene) && plain(body),
+    };
+  });
+  // It reaches round behind the set's edge, and the set's body, with its paper
+  // fill and outline, is painted over it there, as in the approved drawing.
+  expect(order.overlap).toBeGreaterThan(0);
+  expect(order.plain).toBe(true);
+  expect(order.body).toBeGreaterThan(order.scene);
+  expect(order.bodyFill).toBe('rgb(246, 246, 243)');
+});
+
+test("the light is never drawn over the top bar: the scene is cut off at the rail's top", async ({
+  page,
+}) => {
+  await open(page);
+  await expectStage(page, 'lit');
+  const clip = await page.evaluate(() => {
+    const scene = document.querySelector('.mascot-scene');
+    const results = document.querySelector('.results');
+    const header = document.querySelector('header');
+    if (!scene || !results || !header) throw new Error('A hook is missing.');
+    const inset = /^inset\((-?[\d.]+)px/.exec(getComputedStyle(scene).clipPath);
+    return {
+      top: inset === null ? null : Number(inset[1]),
+      rail: results.getBoundingClientRect().top,
+      bar: Math.max(
+        ...Array.from(header.querySelectorAll('.name, [data-tagline], nav')).map(
+          (element) => element.getBoundingClientRect().bottom,
+        ),
+      ),
+    };
+  });
+  expect(clip.top).not.toBeNull();
+  expect(clip.top ?? 0).toBeCloseTo(clip.rail, 0);
+  expect(clip.top ?? 0).toBeGreaterThan(clip.bar);
+  await expectStage(page, 'done');
+  await expect(page.locator('.mascot-scene')).toHaveCSS('clip-path', 'none');
+});

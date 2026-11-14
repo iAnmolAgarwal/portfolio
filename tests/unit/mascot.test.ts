@@ -1,12 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  beamSweep,
-  glanceCues,
-  playMascot,
-  type Box,
-  type EyeCue,
-  type Point,
-} from '../../src/scripts/mascot';
+import { beamSweep, type Box, type Point } from '../../src/scripts/beam';
+import { glanceCues, playMascot, type EyeCue } from '../../src/scripts/mascot';
 
 // The beam as `mascot.css` draws it: 860 long, 420 across its wide end and 2% of
 // that across its narrow end, which starts 20 from where the torch turns.
@@ -36,24 +30,44 @@ describe('beamSweep', () => {
     expect(shorter.length).toBeLessThan(reference.length);
   });
 
-  it('sweeps a rail along the bottom from left to right, pointing down', () => {
+  it('lights a strip above the torch along its middle, from its left end to its right end', () => {
     const torch: Point = { x: 60, y: 200 };
-    const strip: Box = { left: 10, top: 700, right: 380, bottom: 800 };
-    const sweep = beamSweep(torch, strip, 'across', BEAM);
-    // Straight left is 0 and straight down is -90; it ends further round, to the right.
-    expect(sweep.from).toBeLessThan(0);
-    expect(sweep.from).toBeGreaterThan(-90);
-    expect(sweep.to).toBeLessThan(sweep.from);
-    expect(sweep.to).toBeGreaterThan(-180);
-    const farCorner = Math.hypot(strip.right - torch.x, strip.bottom - torch.y);
+    const strip: Box = { left: 24, top: 40, right: 366, bottom: 160 };
+    const sweep = beamSweep(torch, strip, 'up', BEAM);
+    const steps = sweep.steps ?? [];
+    expect(steps.length).toBeGreaterThan(8);
+    expect(steps[0]).toBe(sweep.from);
+    expect(steps[steps.length - 1]).toBe(sweep.to);
+    // Where the beam's middle meets the strip's middle at each step: evenly from end to end.
+    const middle = (strip.top + strip.bottom) / 2;
+    steps.forEach((turn, index) => {
+      const radians = (turn * Math.PI) / 180;
+      // CSS turns the beam, which points left, clockwise by `turn`.
+      const direction = { x: -Math.cos(radians), y: -Math.sin(radians) };
+      const along = (middle - torch.y) / direction.y;
+      expect(along).toBeGreaterThan(0);
+      const x = torch.x + along * direction.x;
+      const wanted = strip.left + ((strip.right - strip.left) * index) / (steps.length - 1);
+      expect(Math.abs(x - wanted)).toBeLessThan(0.01);
+    });
+    // Each step turns on round the same way.
+    for (let index = 1; index < steps.length; index += 1) {
+      expect(steps[index]).toBeGreaterThan(steps[index - 1]);
+    }
+    const farCorner = Math.hypot(strip.right - torch.x, strip.top - torch.y);
     expect(BEAM.gap + sweep.length).toBeGreaterThan(farCorner);
   });
 
-  it('never sweeps backwards', () => {
-    // A strip above the torch would have it turn the other way round.
-    const above: Box = { left: 10, top: 100, right: 380, bottom: 150 };
-    const sweep = beamSweep({ x: 200, y: 500 }, above, 'across', BEAM);
+  it('does not turn at all for a strip that is not above the torch', () => {
+    const below: Box = { left: 10, top: 600, right: 380, bottom: 700 };
+    const sweep = beamSweep({ x: 200, y: 500 }, below, 'up', BEAM);
     expect(sweep.to).toBe(sweep.from);
+  });
+
+  it('never sweeps a rail beside the set backwards', () => {
+    const sweep = beamSweep({ x: 200, y: 500 }, { left: 300, top: 0, right: 380, bottom: 10 }, 'down', BEAM);
+    // Down the side the torch turns one way only: `to` is never past `from` the other way.
+    expect(sweep.to).toBeLessThanOrEqual(sweep.from);
   });
 });
 

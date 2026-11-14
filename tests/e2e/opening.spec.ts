@@ -367,9 +367,10 @@ test('plays through: the cable, the plug, power, the picture, the mascot and the
 
 test.describe('a click on the page background lands on the finished page', () => {
   // Nothing is under this point: it is between the name and the links.
-  // Plain paper: between the name and the links on the desktop, under the name on a phone.
+  // Plain paper: between the name and the links on the desktop; on a phone,
+  // between the strip and the set, right of the antenna.
   const background = (page: Page): { x: number; y: number } =>
-    (page.viewportSize()?.width ?? 0) < 600 ? { x: 60, y: 110 } : { x: 620, y: 40 };
+    (page.viewportSize()?.width ?? 0) < 600 ? { x: 300, y: 228 } : { x: 620, y: 40 };
 
   test('at one second, while the cable is being drawn', async ({ page }) => {
     await load(page);
@@ -707,4 +708,64 @@ test('if the script never arrives the page is shown finished all the same', asyn
   await expect(page.locator('[data-now-title]')).toBeVisible();
   await expect(page.locator('[data-hint]')).toBeVisible();
   await expect(page.locator('[data-screen] video[data-on]')).toBeVisible();
+});
+
+test.describe('a skipped page settles quickly', () => {
+  // How long after the skip everything must be in its finished place.
+  const SETTLED_BY_MS = 350;
+
+  for (const at of [1000, 5000]) {
+    test(`skipped ${at / 1000} s in, everything is in place ${SETTLED_BY_MS} ms later`, async ({
+      page,
+    }) => {
+      // In real time: the transitions and the settle are what is being timed.
+      await page.goto('/');
+      await expect(page.locator('html')).toHaveAttribute('data-stage', /^(off|cable|plugged|on)$/);
+      await page.waitForTimeout(at);
+      await page.evaluate(() => {
+        window.addEventListener(
+          'keydown',
+          () => Object.assign(window, { skippedAt: performance.now() }),
+          { capture: true, once: true },
+        );
+      });
+      await page.keyboard.press('Escape');
+      const moving = await page.evaluate(
+        (by) =>
+          new Promise<string[]>((resolve) => {
+            const skippedAt = (window as unknown as { skippedAt: number }).skippedAt;
+            const look = (): void => {
+              if (performance.now() - skippedAt < by) {
+                requestAnimationFrame(look);
+                return;
+              }
+              // Still on its way: a transition, a settle, or something of the opening.
+              const still = document
+                .getAnimations()
+                .filter(
+                  (animation) =>
+                    animation.playState === 'running' &&
+                    (animation instanceof CSSTransition ||
+                      animation.id === 'settle' ||
+                      animation.id === 'opening'),
+                )
+                .map((animation) => {
+                  const target = (animation.effect as KeyframeEffect | null)?.target;
+                  const name =
+                    animation instanceof CSSTransition ? animation.transitionProperty : animation.id;
+                  return `${target?.getAttribute('class') ?? target?.tagName ?? '?'} ${name}`;
+                });
+              resolve(still);
+            };
+            look();
+          }),
+        SETTLED_BY_MS,
+      );
+      expect(moving).toEqual([]);
+      await expect(page.locator('html')).toHaveAttribute('data-stage', 'done');
+      expect(await opacityOf(page, '[data-now]')).toBe(1);
+      expect(await opacityOf(page, '[data-hint]')).toBe(1);
+      expect(await opacityOf(page, '[data-rail]')).toBeCloseTo(0.62, 2);
+    });
+  }
 });

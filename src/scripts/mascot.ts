@@ -6,38 +6,20 @@
 // set and the rail are at that moment, so the scene holds together at any window
 // size and through a resize.
 
-export type BeamTarget = 'down' | 'across';
+import { LAID_OUT } from './layout';
+import { BEAM_MOUTH, beamSweep, type BeamTarget, type Point, type Sweep } from './beam';
+
+export { beamSweep, type BeamTarget, type Box, type Point, type Sweep } from './beam';
 
 export interface MascotOptions {
   /** The set the mascot plays on. */
   tv: HTMLElement;
-  /** Which way the rail runs: `down` the left side, or `across` the bottom. */
+  /** Which way the light goes: `down` the rail beside the set, or `up` to a strip above it. */
   beamTarget: BeamTarget;
   /** Aborting it ends the scene at once, with everything hidden. */
   signal: AbortSignal;
   /** Called once, at the instant the beam comes on. */
   onTorchOn(): void;
-}
-
-export interface Point {
-  x: number;
-  y: number;
-}
-
-export interface Box {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-}
-
-export interface Sweep {
-  /** The torch's turn when the sweep starts, in degrees, as CSS `rotate` takes it. */
-  from: number;
-  /** Its turn when the sweep ends. */
-  to: number;
-  /** How long the beam has to be to reach the rail's farthest corner. */
-  length: number;
 }
 
 // ---------- the sprite ----------
@@ -56,6 +38,12 @@ const BEHIND_LEFT = 6;
 /** Leaning out past the left edge. */
 const PEEK_OUT = -48;
 const PEEK_TILT = -8;
+/**
+ * Leaning out, it always leaves at least this much paper between itself and the
+ * window's left edge, in pixels. Beside a set near that edge (a phone) it leans
+ * out less and more of it stays behind the set.
+ */
+const PEEK_PAPER = 10;
 /** Its place along the top of the set. */
 const ON_CORNER = 30;
 /** Tucked behind the top edge, before it pops up and after it drops. */
@@ -64,6 +52,8 @@ const BEHIND_TOP = 8;
 const STANDING = -(HEIGHT - 2);
 /** The small hop before it drops. */
 const HOP = -9;
+/** How far left of the mascot its torch can reach, in page units. */
+const TORCH_REACH = 24;
 
 // ---------- the eyes ----------
 
@@ -72,8 +62,8 @@ const HOP = -9;
  * the glancing side in the head's edge cell and no further.
  */
 const GLANCE_CELLS = 2;
-/** How many cells they drop to look at a rail that runs along the bottom. */
-const LOOK_DOWN_CELLS = 1;
+/** How many cells they rise to look at a strip above the set. */
+const LOOK_UP_CELLS = 1;
 /** The time the eyes take to cross one cell, and the pause they make on it. */
 const CELL_MS = 38;
 /** How long they rest looking to each side during the glance. */
@@ -87,24 +77,6 @@ const CELL = { x: 1, y: 2 };
 const TORCH_UP_SWING = 74;
 /** The swing that tucks it away after the light's last position. */
 const TORCH_AWAY_SWING = 106;
-/** The beam's narrow end, as a share of its wide end. Matches its clip-path. */
-const BEAM_MOUTH = 0.02;
-/**
- * Where on the rail the light starts and ends, as shares of the rail's length.
- * It starts with its leading edge at the first share, on the rail's near side,
- * and ends with its trailing edge at the second, on the far side. The rail fades
- * in over its first 14% and out over its last. The two shares are set so that at
- * the size the scene was designed at, the torch turns from 4 to 76 degrees below
- * level, as in the approved drawing.
- */
-const LIGHT_FROM = 0.14;
-const LIGHT_TO = 0.9;
-/**
- * How far along the beam the rail's farthest corner falls. The light has all but
- * faded by there. Set so the beam is as long as in the approved drawing.
- */
-const BEAM_REACH = 0.88;
-
 // ---------- timing ----------
 
 const SOFT = 'cubic-bezier(.2,.8,.2,1)';
@@ -114,60 +86,6 @@ const SWEEP_EASING = 'cubic-bezier(.45,.05,.3,1)';
 
 function abortError(): DOMException {
   return new DOMException('The mascot scene was aborted.', 'AbortError');
-}
-
-function degrees(radians: number): number {
-  return (radians * 180) / Math.PI;
-}
-
-/**
- * Where the torch points to light the rail from one end to the other, and how
- * long its beam must be.
- *
- * @param pivot Where the torch turns.
- * @param rail The rail's box.
- * @param target Which way the rail runs.
- * @param beam The beam's shape: its half-angle in radians, and the gap between
- *   the pivot and the beam's narrow end.
- */
-export function beamSweep(
-  pivot: Point,
-  rail: Box,
-  target: BeamTarget,
-  beam: { halfAngle: number; gap: number },
-): Sweep {
-  const width = rail.right - rail.left;
-  const height = rail.bottom - rail.top;
-
-  // The light enters at a point on the rail's near side and leaves at one on its far side.
-  const enters: Point =
-    target === 'down'
-      ? { x: rail.right, y: rail.top + LIGHT_FROM * height }
-      : { x: rail.left + LIGHT_FROM * width, y: rail.top };
-  const leaves: Point =
-    target === 'down'
-      ? { x: rail.left, y: rail.top + LIGHT_TO * height }
-      : { x: rail.left + LIGHT_TO * width, y: rail.bottom };
-
-  // How far the torch has turned from pointing straight left to point at a spot:
-  // a quarter turn is straight down, a half turn is straight right.
-  const turnTo = (spot: Point): number => Math.atan2(spot.y - pivot.y, pivot.x - spot.x);
-
-  const first = turnTo(enters) - beam.halfAngle;
-  const last = Math.max(first, turnTo(leaves) + beam.halfAngle);
-
-  const farthest = Math.max(
-    ...[rail.left, rail.right].flatMap((x) =>
-      [rail.top, rail.bottom].map((y) => Math.hypot(x - pivot.x, y - pivot.y)),
-    ),
-  );
-
-  // CSS turns clockwise for a positive angle; the torch turns the other way.
-  return {
-    from: -degrees(first),
-    to: -degrees(last),
-    length: Math.max(0, farthest - beam.gap) / BEAM_REACH,
-  };
 }
 
 // ---------- the eyes' timeline ----------
@@ -291,6 +209,8 @@ interface Stance {
   top: number;
   /** How far down the set the mascot peeks out, in pixels. */
   peek: number;
+  /** The furthest left it may lean out to, from its resting corner. */
+  leftmost: number;
 }
 
 type Frames = () => Keyframe[];
@@ -367,13 +287,17 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
       left: set.left,
       top: set.top,
       peek: Math.round(body.height * PEEK_AT),
+      leftmost: PEEK_PAPER - restX,
     };
   }
 
   const behindLeft = (s: Stance): string =>
     `translate(${s.x + BEHIND_LEFT * s.u}px, ${s.y + s.peek}px) rotate(0deg)`;
   const peeking = (s: Stance): string =>
-    `translate(${s.x + PEEK_OUT * s.u}px, ${s.y + s.peek}px) rotate(${PEEK_TILT}deg)`;
+    `translate(${Math.max(s.x + PEEK_OUT * s.u, s.leftmost + tilted(s))}px, ${s.y + s.peek}px) rotate(${PEEK_TILT}deg)`;
+  // How far the tilt carries its top corner left of where it stands.
+  const tilted = (s: Stance): number =>
+    HEIGHT * s.u * Math.sin((Math.abs(PEEK_TILT) * Math.PI) / 180);
   const behindTop = (s: Stance): string =>
     `translate(${s.x + ON_CORNER * s.u}px, ${s.y + BEHIND_TOP * s.u}px)`;
   const standing = (s: Stance): string =>
@@ -442,7 +366,7 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
 
   async function perform(): Promise<void> {
     const toRail: Gaze =
-      beamTarget === 'down' ? { x: -GLANCE_CELLS, y: 0 } : { x: 0, y: LOOK_DOWN_CELLS };
+      beamTarget === 'down' ? { x: -GLANCE_CELLS, y: 0 } : { x: 0, y: -LOOK_UP_CELLS };
 
     root.toggleAttribute('data-playing', true);
 
@@ -511,7 +435,14 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
     await run(
       torch,
       () => {
-        const { from, to } = aim();
+        const { from, to, steps } = aim();
+        // Along a strip the light must cross it evenly: a turn for each stretch.
+        if (steps !== undefined) {
+          return steps.map((turn, index) => ({
+            transform: `rotate(${turn}deg) scale(1)`,
+            offset: index / (steps.length - 1),
+          }));
+        }
         return [
           { transform: `rotate(${from}deg) scale(1)` },
           { transform: `rotate(${to}deg) scale(1)` },
@@ -557,12 +488,41 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
 
   // ----- keeping up with the window, and ending -----
 
-  /** After a resize, redraws every running or held frame for where the set is now. */
+  /**
+   * The light is never drawn above the rail's top edge, which keeps it off the
+   * name, its line and the links: the box the scene plays in is cut off there.
+   * On a window so short that the mascot standing on the set reaches above that
+   * edge, the cut leaves room round the mascot and its torch.
+   */
+  const stage = root.parentElement;
+  function keepUnderRail(): void {
+    const rail = root.ownerDocument.querySelector('[data-rail]');
+    const edge = (rail?.closest('.results') ?? rail)?.getBoundingClientRect().top;
+    if (stage === null || edge === undefined) return;
+    const top = Math.max(0, edge);
+    const s = measure();
+    const head = s.top + (STANDING + HOP) * s.u - 4;
+    if (head >= top) {
+      stage.style.clipPath = `inset(${top}px 0 0 0)`;
+      return;
+    }
+    const left = s.left + (ON_CORNER - TORCH_REACH) * s.u;
+    const right = s.left + (ON_CORNER + WIDTH + 4) * s.u;
+    stage.style.clipPath =
+      `polygon(0 ${top}px, ${left}px ${top}px, ${left}px ${head}px, ${right}px ${head}px, ` +
+      `${right}px ${top}px, 100% ${top}px, 100% 100%, 0 100%)`;
+  }
+
+  /**
+   * After the page is laid out again for a new window size, redraws every running
+   * or held frame for where the set is now.
+   */
   function follow(): void {
     for (const { animation, frames } of held.values()) {
       if (animation.effect instanceof KeyframeEffect) animation.effect.setKeyframes(frames());
     }
     if (beamIsLaid) layBeam();
+    keepUnderRail();
   }
 
   return new Promise<void>((resolve, reject) => {
@@ -573,13 +533,14 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
      */
     function clear(): void {
       signal.removeEventListener('abort', onAbort);
-      view?.removeEventListener('resize', follow);
+      view?.removeEventListener(LAID_OUT, follow);
       for (const { animation } of held.values()) animation.cancel();
       held.clear();
       if (playing.get(root) !== token) return;
       playing.delete(root);
       root.removeAttribute('data-playing');
       beam.style.removeProperty('--beam-length');
+      stage?.style.removeProperty('clip-path');
     }
 
     function onAbort(): void {
@@ -588,7 +549,8 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
     }
 
     signal.addEventListener('abort', onAbort, { once: true });
-    view?.addEventListener('resize', follow);
+    view?.addEventListener(LAID_OUT, follow);
+    keepUnderRail();
     perform().then(
       () => {
         clear();

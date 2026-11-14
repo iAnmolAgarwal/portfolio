@@ -411,8 +411,8 @@ function mascotScene(
     scene.setStage('mascot');
     await playMascot(mascot, {
       tv,
-      // On a phone the rail is a strip along the bottom, lit from above.
-      beamTarget: layout().phone ? 'across' : 'down',
+      // On a phone the rail is a strip above the set, lit from below.
+      beamTarget: layout().phone ? 'up' : 'down',
       signal: scene.signal,
       onTorchOn: scene.lightRail,
     });

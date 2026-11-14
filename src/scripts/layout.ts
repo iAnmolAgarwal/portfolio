@@ -8,19 +8,35 @@
 // `data-give`.
 
 import { giveLevel, type Give } from '../lib/fit';
+import { fitPhoneCable } from './cable';
 
-/** When the phone layout applies. The same query opens `phone.css`. */
+/** When the phone layout applies. The same query opens `phone.css`: keep the two alike. */
 export const PHONE_QUERY = '(max-width: 820px) and (orientation: portrait)';
 
-/** The phone layout is drawn 390 wide and grows no more than this. */
+/** The phone layout is drawn 390 wide and grows no more than this (`--p` in `phone.css`). */
 const PHONE_WIDTH = 390;
 const PHONE_SCALE_CAP = 1.45;
 
 /** Handwriting smaller than this is not readable; the cable's notes go first. */
 const LEAST_NOTE_PX = 10;
-/** The desktop cable's notes are set this size in a drawing this wide. */
+/**
+ * The desktop cable's notes are set this size (`.cable .note` in `cable.css`) in
+ * a drawing this wide (the `viewBox` in `Cable.astro`).
+ */
 const NOTE_SIZE = 19;
 const CABLE_WIDTH = 284;
+
+/**
+ * Spare height on a phone, in the phone's units. The gaps between the set, the
+ * words and the band take the first of it, this much each; then the paper above
+ * the antenna and under the band shares it, evened up, until each is this tall;
+ * then the gaps between take the rest. At their smallest the paper above the
+ * antenna is 10 and under the band 16px (`phone.css`).
+ */
+const INNER_FIRST = 12;
+const OUTER_MOST = 56;
+const ABOVE_LEAST = 10;
+const BELOW_LEAST_PX = 16;
 
 export interface Layout {
   phone: boolean;
@@ -40,6 +56,9 @@ function visibleSize(): { width: number; height: number } {
  */
 function measurePhone(root: HTMLElement, width: number): { needed: number[]; scale: number } {
   const scale = Math.min(width / PHONE_WIDTH, PHONE_SCALE_CAP);
+  // With none of the spare height shared out yet.
+  root.style.removeProperty('--more');
+  root.style.removeProperty('--above');
   root.setAttribute('data-measuring', '');
   const needed = ([0, 1, 2, 3] as const).map((level) => {
     root.dataset.give = String(level);
@@ -60,6 +79,20 @@ function desktopGive(): Give {
   return (NOTE_SIZE * width) / CABLE_WIDTH < LEAST_NOTE_PX ? 2 : 0;
 }
 
+/**
+ * How the spare height is shared out: what each gap between the set, the words
+ * and the band gets (`more`), and what is added above the antenna (`above`).
+ * Whatever is left lies under the band.
+ */
+function share(spare: number, scale: number): { more: number; above: number } {
+  if (spare <= 0) return { more: 0, above: 0 };
+  const first = Math.min(spare, 2 * INNER_FIRST * scale);
+  const outer = Math.min(spare - first, 2 * OUTER_MOST * scale - ABOVE_LEAST * scale - BELOW_LEAST_PX);
+  // Evened up: the paper above the antenna starts smaller, so it gets more.
+  const above = Math.min(outer, Math.max(0, (outer + BELOW_LEAST_PX - ABOVE_LEAST * scale) / 2));
+  return { more: (spare - outer) / 2, above };
+}
+
 function measure(root: HTMLElement, phoneQuery: MediaQueryList): Layout {
   const { width, height } = visibleSize();
   const phone = phoneQuery.matches;
@@ -71,6 +104,8 @@ function measure(root: HTMLElement, phoneQuery: MediaQueryList): Layout {
   else root.style.removeProperty('--vh');
 
   if (!phone) {
+    root.style.removeProperty('--more');
+    root.style.removeProperty('--above');
     root.dataset.give = '0';
     const give = desktopGive();
     root.dataset.give = String(give);
@@ -83,6 +118,10 @@ function measure(root: HTMLElement, phoneQuery: MediaQueryList): Layout {
   // Its height in the layout's own units, for the stylesheet to scale it down by
   // if even the most it can give up is not enough.
   root.style.setProperty('--fit-h', String(needed[give] / scale));
+  const { more, above } = share(height - needed[give], scale);
+  root.style.setProperty('--more', `${more}px`);
+  root.style.setProperty('--above', `${above}px`);
+  fitPhoneCable();
   return { phone, give };
 }
 
@@ -100,16 +139,30 @@ export function watchLayout(onChange: (info: Layout) => void): void {
   let last: Layout | undefined;
 
   const update = (): void => {
+    frame = 0;
     const now = measure(root, phoneQuery);
+    window.dispatchEvent(new Event(LAID_OUT));
     if (last !== undefined && last.phone === now.phone && last.give === now.give) return;
     last = now;
     onChange(now);
   };
 
-  window.addEventListener('resize', update);
-  window.visualViewport?.addEventListener('resize', update);
-  phoneQuery.addEventListener('change', update);
+  // However many resize events a frame brings, the page is measured once.
+  let frame = 0;
+  const soon = (): void => {
+    if (frame === 0) frame = requestAnimationFrame(update);
+  };
+  window.addEventListener('resize', soon);
+  window.visualViewport?.addEventListener('resize', soon);
+  phoneQuery.addEventListener('change', soon);
   // Lettering that arrives late can change what the measures come to.
-  void document.fonts?.ready.then(update);
+  void document.fonts?.ready.then(soon);
   update();
 }
+
+/**
+ * Sent on the window each time the layout has been measured and the page laid
+ * out again for the window's size: what anything placed by measuring the page
+ * (the mascot) should follow.
+ */
+export const LAID_OUT = 'layout';

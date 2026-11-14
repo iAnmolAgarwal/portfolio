@@ -111,7 +111,8 @@ function cableAndRest(page: Page): Promise<{
     });
     const shown = (element: Element): boolean =>
       element.checkVisibility({ opacityProperty: true, visibilityProperty: true });
-    const drawing = Array.from(document.querySelectorAll('.cable svg')).find(shown);
+    // The desktop's cable or the phone's, whichever shows.
+    const drawing = Array.from(document.querySelectorAll('.cable')).find(shown);
     if (drawing === undefined) throw new Error('No cable drawing shows.');
     const wire = drawing.querySelector<SVGPathElement>('.wire');
     let points: { x: number; y: number }[] = [];
@@ -238,6 +239,33 @@ for (const size of SIZES) {
       await expectClear(page);
     });
 
+    if (size.height > size.width) {
+      test('keeps the cable inside the margins and paper under the last thing drawn', async ({
+        page,
+      }) => {
+        await open(page, size);
+        const { wire, plug } = await cableAndRest(page);
+        const column = await boxOf(page.locator('header'));
+        for (const p of wire) {
+          expect(p.x).toBeGreaterThanOrEqual(column.x - 0.5);
+          expect(p.x).toBeLessThanOrEqual(column.x + column.width + 0.5);
+        }
+        if (plug !== null) expect(plug.x + plug.width).toBeLessThanOrEqual(column.x + column.width);
+        const lowest = await page.evaluate(() =>
+          Math.max(
+            ...Array.from(
+              document.querySelectorAll(
+                '[data-cable-phone] .wire, [data-cable-phone] .note, [data-cable-phone] .doodle, [data-now] *, [data-tv] *, .results',
+              ),
+            )
+              .filter((element) => element.checkVisibility({ opacityProperty: true }))
+              .map((element) => element.getBoundingClientRect().bottom),
+          ),
+        );
+        expect(size.height - lowest).toBeGreaterThanOrEqual(16);
+      });
+    }
+
     test('sets nothing to be read below 10px, and gives a finger room on every control', async ({
       page,
     }) => {
@@ -309,15 +337,20 @@ for (const size of SIZES) {
 }
 
 test.describe('at 390×844', () => {
-  test('runs the rail as a strip along the bottom, below everything else', async ({ page }) => {
+  test('runs the rail as a strip directly under the name, above the set', async ({ page }) => {
     await open(page, PHONE);
     const rail = await boxOf(page.locator('[data-rail]'));
     const strip = await boxOf(page.locator('.results'));
+    const line = await boxOf(page.locator('[data-tagline]'));
+    const logos = await boxOf(page.getByRole('banner').getByRole('navigation'));
     expect(rail.width).toBeGreaterThan(rail.height * 2);
-    expect(PHONE.height - (strip.y + strip.height)).toBeLessThanOrEqual(24);
-    for (const hook of ['[data-tv]', '[data-now]', '[data-cable-phone]']) {
-      const above = await boxOf(page.locator(hook));
-      expect(above.y + above.height, hook).toBeLessThanOrEqual(strip.y);
+    // A small, fixed gap under the line; nothing of the top bar over it.
+    expect(strip.y - (line.y + line.height)).toBeGreaterThanOrEqual(14);
+    expect(strip.y - (line.y + line.height)).toBeLessThanOrEqual(22);
+    expect(intersect(strip, logos)).toBe(false);
+    for (const hook of ['.antenna', '[data-tv]', '[data-now]', '[data-cable-phone]']) {
+      const below = await boxOf(page.locator(hook));
+      expect(below.y, hook).toBeGreaterThanOrEqual(strip.y + strip.height);
     }
     // The tracks lie along it, above and below.
     const tracks = await page.locator('.results .trk').all();
@@ -327,6 +360,23 @@ test.describe('at 390×844', () => {
       expect(box.width).toBeGreaterThan(box.height * 50);
     }
     await expect(page.locator('[data-rail]')).toHaveAttribute('data-axis', 'x');
+  });
+
+  test('shares the spare height evenly above the antenna and under the band', async ({ page }) => {
+    await open(page, PHONE);
+    const strip = await boxOf(page.locator('.results'));
+    const antenna = await boxOf(page.locator('.antenna'));
+    const band = await boxOf(page.locator('[data-cable-phone]'));
+    const above = antenna.y - (strip.y + strip.height);
+    const below = PHONE.height - (band.y + band.height);
+    expect(Math.abs(above - below)).toBeLessThanOrEqual(4);
+    expect(above).toBeLessThanOrEqual(57);
+    expect(below).toBeLessThanOrEqual(57);
+    // The set, the words and the band have more room between them than at their tightest.
+    const tv = await boxOf(page.locator('[data-tv]'));
+    const words = await boxOf(page.locator('[data-now]'));
+    expect(words.y - (tv.y + tv.height)).toBeGreaterThan(26);
+    expect(band.y - (words.y + words.height)).toBeGreaterThan(16);
   });
 
   test('shows the top links as logos, named for screen readers', async ({ page }) => {
@@ -399,14 +449,18 @@ test.describe('at 390×844', () => {
     expect(off).toBeLessThanOrEqual(dial.width);
   });
 
-  test('draws the cable to the set and its notes in reading order beside the tangle', async ({
+  test('reads the band top to bottom: the first note, the five drawings, the second note', async ({
     page,
   }) => {
     await open(page, PHONE);
     await expect(page.locator('html')).toHaveAttribute('data-give', '0');
     const first = await boxOf(page.locator('[data-cable-phone] .note-run'));
+    const drawings = await boxOf(page.locator('[data-cable-phone] .doodles'));
     const second = await boxOf(page.locator('[data-cable-phone] .note-tangle'));
-    expect(first.y + first.height).toBeLessThanOrEqual(second.y + 1);
+    expect(first.y + first.height).toBeLessThanOrEqual(drawings.y + 1);
+    expect(drawings.y + drawings.height).toBeLessThanOrEqual(second.y + 1);
+    // The lines of writing share one left edge.
+    expect(Math.abs(first.x - second.x)).toBeLessThanOrEqual(0.5);
     await expect(page.locator('[data-cable-phone] .doodle')).toHaveCount(5);
     for (const doodle of await page.locator('[data-cable-phone] .doodle').all()) {
       await expect(doodle).toBeVisible();
@@ -443,6 +497,20 @@ test('on a short phone it gives up the small drawings first, and keeps the set, 
   }
   await expect(page.locator('[data-cable-phone] .doodle').first()).toBeHidden();
   await expect(page.locator('[data-cable-phone] .plug')).toBeVisible();
+  // Without the drawings the two notes still read as two, a clear gap apart.
+  const first = await boxOf(page.locator('[data-cable-phone] .note-run'));
+  const second = await boxOf(page.locator('[data-cable-phone] .note-tangle'));
+  await expect(page.locator('[data-cable-phone] .note-tangle')).toBeVisible();
+  expect(second.y - (first.y + first.height)).toBeGreaterThanOrEqual(8);
+});
+
+test('on a phone held sideways the rail starts well under the line beneath his name', async ({
+  page,
+}) => {
+  await open(page, { width: 844, height: 390 });
+  const line = await boxOf(page.locator('[data-tagline]'));
+  const rail = await boxOf(page.locator('.results'));
+  expect(rail.y - (line.y + line.height)).toBeGreaterThanOrEqual(24);
 });
 
 test.describe('the dial on a phone', () => {
@@ -520,6 +588,53 @@ test.describe('the rail on a phone', () => {
     await expect.poll(rolls).toBe(1);
     const across = await rolled(page);
     await expect.poll(async () => (await rolled(page)).x).toBeGreaterThan(across.x + 2);
+  });
+
+  test('loops over exactly one copy of the cards, and still does after a resize', async ({
+    page,
+  }) => {
+    await open(page, PHONE);
+    const track = page.locator('[data-rail-track]');
+    const loopLength = (): Promise<number> =>
+      track.evaluate((element) => {
+        const [first, second] = Array.from(element.children);
+        return second.getBoundingClientRect().left - first.getBoundingClientRect().left;
+      });
+    // Park the roll at the very end of its loop, where the seam would show.
+    const endOfLoop = (): Promise<number> =>
+      track.evaluate((element) => {
+        const [roll] = element.getAnimations();
+        if (roll === undefined) throw new Error('The rail is not rolling.');
+        const duration = Number(roll.effect?.getComputedTiming().duration);
+        roll.pause();
+        roll.currentTime = duration - 0.001;
+        return -new DOMMatrixReadOnly(getComputedStyle(element).transform).m41;
+      });
+    const first = await loopLength();
+    expect(first).toBeGreaterThan(0);
+    expect(await endOfLoop()).toBeCloseTo(first, 1);
+    await page.setViewportSize({ width: 412, height: 915 });
+    await expect.poll(loopLength).toBeGreaterThan(first * 1.03);
+    const wider = await loopLength();
+    await expect.poll(endOfLoop).toBeCloseTo(wider, 1);
+    await page.setViewportSize({ width: 360, height: 740 });
+    await expect.poll(loopLength).toBeLessThan(first);
+    await expect.poll(async () => (await endOfLoop()) - (await loopLength())).toBeCloseTo(0, 1);
+  });
+
+  test('a finger on the strip holds it, and it rolls on when lifted', async ({ page }) => {
+    await open(page, PHONE);
+    const strip = await boxOf(page.locator('[data-rail]'));
+    const at = centreOf(strip);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+    await page.waitForTimeout(200);
+    const held = (await rolled(page)).x;
+    await page.waitForTimeout(600);
+    expect((await rolled(page)).x).toBeCloseTo(held, 1);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
+    await expect.poll(async () => (await rolled(page)).x).toBeGreaterThan(held + 2);
   });
 
   test('a resize within the phone layout does not start it again', async ({ page }) => {
@@ -618,60 +733,216 @@ test.describe('the opening on a phone', () => {
     });
   }
 
-  test('the mascot stands on the set and lights the strip from left to right', async ({
-    page,
-  }) => {
+  /** One frame of the opening as the record keeps it; `clipTop` is where the scene is cut off above. */
+  interface Frame {
+    stage: string;
+    mascot: Box | null;
+    clipTop: number | null;
+    beam: Box | null;
+    beamOpacity: number;
+  }
+
+  interface Lit {
+    wipe: { frames: string[]; duration: number; easing: string; start: number };
+    sweep: { frames: string[]; offsets: number[]; duration: number; easing: string; start: number };
+    tracks: string[][];
+    pivot: { x: number; y: number };
+    rail: Box;
+  }
+
+  /** Opens the page and keeps a record of the opening, frame by frame. */
+  async function record(page: Page): Promise<void> {
     await page.setViewportSize(PHONE);
     await page.goto('/');
-    // Read at the moment the rail is lit, before anything has painted.
     await page.evaluate(() => {
       const root = document.documentElement;
+      const mascot = document.querySelector<HTMLElement>('[data-mascot]');
+      const torch = document.querySelector<HTMLElement>('[data-torch]');
+      const beam = document.querySelector<HTMLElement>('[data-beam]');
+      const rail = document.querySelector<HTMLElement>('[data-rail]');
+      const scene = mascot?.parentElement;
+      if (!mascot || !torch || !beam || !rail || !scene) throw new Error('A hook is missing.');
+      const plain = (rect: DOMRect) => ({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+      const frames: unknown[] = [];
+      const store = { frames, lit: null as unknown };
+      Object.assign(window, { trace: store });
+
+      const timing = (animation: Animation) => {
+        const effect = animation.effect as KeyframeEffect;
+        const { duration, easing } = effect.getTiming();
+        return { duration: Number(duration), easing: String(easing) };
+      };
       new MutationObserver(() => {
-        if (root.dataset.stage !== 'lit') return;
-        const rail = document.querySelector('[data-rail]');
-        const wipe = rail?.getAnimations().find((each) => each.id === 'opening');
-        const tracks = Array.from(document.querySelectorAll('.results .trk')).map((track) =>
-          (track.getAnimations()[0]?.effect as KeyframeEffect | undefined)?.getKeyframes(),
-        );
-        const torch = document.querySelector('[data-torch]')?.getAnimations().at(-1);
-        Object.assign(window, {
-          lit: {
-            wipe: (wipe?.effect as KeyframeEffect | undefined)?.getKeyframes().map((k) => k.clipPath),
-            tracks: tracks.map((frames) => frames?.map((k) => k.transform)),
-            sweep: (torch?.effect as KeyframeEffect | undefined)
-              ?.getKeyframes()
-              .map((k) => String(k.transform)),
+        if (root.dataset.stage !== 'lit' || store.lit !== null) return;
+        const wipe = rail.getAnimations().find((each) => each.id === 'opening');
+        const sweep = torch.getAnimations().at(-1);
+        if (!wipe || !sweep) throw new Error('No wipe or sweep.');
+        const m = mascot.getBoundingClientRect();
+        const t = getComputedStyle(torch);
+        const lit = {
+          wipe: {
+            frames: (wipe.effect as KeyframeEffect).getKeyframes().map((k) => String(k.clipPath)),
+            ...timing(wipe),
+            start: 0,
           },
+          sweep: {
+            frames: (sweep.effect as KeyframeEffect).getKeyframes().map((k) => String(k.transform)),
+            offsets: (sweep.effect as KeyframeEffect).getKeyframes().map((k) => Number(k.computedOffset)),
+            ...timing(sweep),
+            start: 0,
+          },
+          tracks: Array.from(document.querySelectorAll('.results .trk')).map((track) =>
+            ((track.getAnimations()[0]?.effect as KeyframeEffect | undefined)?.getKeyframes() ?? []).map(
+              (k) => String(k.transform),
+            ),
+          ),
+          // Where the torch turns: the middle of its near end, the mascot standing.
+          pivot: {
+            x: m.right - parseFloat(t.right),
+            y: m.top + parseFloat(t.top) + parseFloat(t.height) / 2,
+          },
+          rail: plain(rail.getBoundingClientRect()),
+        };
+        store.lit = lit;
+        void Promise.all([wipe.ready, sweep.ready]).then(() => {
+          lit.wipe.start = Number(wipe.startTime);
+          lit.sweep.start = Number(sweep.startTime);
         });
       }).observe(root, { attributeFilter: ['data-stage'] });
+
+      const clipTop = (): number | null => {
+        const clip = getComputedStyle(scene).clipPath;
+        if (clip === 'none') return null;
+        const inset = /^inset\((-?[\d.]+)px/.exec(clip);
+        if (inset) return Number(inset[1]);
+        const polygon = /^polygon\(\S+ (-?[\d.]+)px/.exec(clip);
+        return polygon ? Number(polygon[1]) : null;
+      };
+      const sample = (): void => {
+        const showing = getComputedStyle(mascot).visibility === 'visible';
+        frames.push({
+          stage: root.dataset.stage,
+          mascot: showing ? plain(mascot.getBoundingClientRect()) : null,
+          clipTop: clipTop(),
+          beam: showing ? plain(beam.getBoundingClientRect()) : null,
+          beamOpacity: Number(getComputedStyle(beam).opacity),
+        });
+        if (root.dataset.stage !== 'done') requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
     });
+  }
 
-    await expect(page.locator('html')).toHaveAttribute('data-stage', 'lit', { timeout: 20_000 });
-    const lit = (await page.evaluate(() => (window as unknown as { lit: unknown }).lit)) as {
-      wipe: string[];
-      tracks: string[][];
-      sweep: string[];
+  test('the mascot peeks inside the screen, then lights the strip from its left end to its right end', async ({
+    page,
+  }) => {
+    await record(page);
+    await expect(page.locator('html')).toHaveAttribute('data-stage', 'done', { timeout: 25_000 });
+    const trace = (await page.evaluate(() => (window as unknown as { trace: unknown }).trace)) as {
+      frames: Frame[];
+      lit: Lit;
     };
-    expect(lit.wipe[0]).toBe('inset(0px 100% 0px 0px)');
+
+    // The peek and the climb: all of the mascot on the screen, with paper to its left.
+    const out = trace.frames.filter((frame) => frame.mascot !== null);
+    expect(out.length).toBeGreaterThan(20);
+    for (const { mascot } of out) {
+      if (mascot === null) continue;
+      expect(mascot.x).toBeGreaterThanOrEqual(2);
+      expect(mascot.y).toBeGreaterThanOrEqual(0);
+      expect(mascot.x + mascot.width).toBeLessThanOrEqual(PHONE.width);
+    }
+
+    // The light crosses the strip at an even pace from one end to the other: each
+    // of the torch's turns aims the beam's middle at an evenly spaced point along
+    // the strip's middle, from its left edge to its right edge.
+    const { lit } = trace;
+    const middle = lit.rail.y + lit.rail.height / 2;
+    const hits = lit.sweep.frames.map((transform) => {
+      const turn = (Number(/rotate\((-?[\d.]+)deg\)/.exec(transform)?.[1]) * Math.PI) / 180;
+      const direction = { x: -Math.cos(turn), y: -Math.sin(turn) };
+      const along = (middle - lit.pivot.y) / direction.y;
+      expect(along).toBeGreaterThan(0);
+      return lit.pivot.x + along * direction.x;
+    });
+    expect(hits.length).toBeGreaterThan(8);
+    expect(hits[0]).toBeCloseTo(lit.rail.x, 0);
+    expect(hits[hits.length - 1]).toBeCloseTo(lit.rail.x + lit.rail.width, 0);
+    hits.forEach((x, index) => {
+      const wanted = lit.rail.x + lit.rail.width * lit.sweep.offsets[index];
+      expect(Math.abs(x - wanted)).toBeLessThanOrEqual(2);
+    });
+    // The strip opens from the left in step: the same time, length and easing.
+    expect(lit.wipe.frames[0]).toBe('inset(0px 100% 0px 0px)');
+    expect(lit.wipe.duration).toBe(lit.sweep.duration);
+    expect(lit.wipe.easing).toBe(lit.sweep.easing);
+    expect(Math.abs(lit.wipe.start - lit.sweep.start)).toBeLessThanOrEqual(20);
     for (const frames of lit.tracks) expect(frames[0]).toBe('scaleX(0)');
-    // The torch turns from pointing down at the strip's near end to its far end.
-    const angles = lit.sweep.map((transform) => Number(/rotate\((-?[\d.]+)deg\)/.exec(transform)?.[1]));
-    expect(angles[0]).toBeLessThan(-60);
-    expect(angles[0]).toBeGreaterThan(-100);
-    expect(angles[1]).toBeLessThan(angles[0]);
-    expect(angles[1]).toBeGreaterThan(-160);
 
-    // Standing on the top-left of the set, its feet just behind the top edge.
-    const standing = await stance(page);
-    expect(standing.feet).toBeGreaterThanOrEqual(0);
-    expect(standing.feet).toBeLessThanOrEqual(4 * standing.u);
-    expect(standing.left).toBeGreaterThanOrEqual(0);
+    // The light is never drawn above the strip's top edge, so never over the top
+    // bar, and never reaches the words under the set.
+    const strip = await boxOf(page.locator('.results'));
+    const words = await boxOf(page.locator('[data-now]'));
+    const top = await page.evaluate(() =>
+      Math.max(
+        ...['.name', '[data-tagline]', 'header nav'].map(
+          (selector) => document.querySelector(selector)?.getBoundingClientRect().bottom ?? 0,
+        ),
+      ),
+    );
+    const lighting = trace.frames.filter((frame) => frame.beamOpacity > 0 && frame.beam !== null);
+    expect(lighting.length).toBeGreaterThan(20);
+    for (const frame of lighting) {
+      expect(frame.clipTop).not.toBeNull();
+      expect(frame.clipTop ?? 0).toBeGreaterThanOrEqual(strip.y - 0.5);
+      expect(frame.clipTop ?? 0).toBeGreaterThan(top);
+      const beam = frame.beam as Box;
+      const shown = { ...beam, y: Math.max(beam.y, frame.clipTop ?? 0) };
+      shown.height = beam.y + beam.height - shown.y;
+      if (shown.height > 0) expect(intersect(shown, words)).toBe(false);
+    }
 
-    await expect(page.locator('html')).toHaveAttribute('data-stage', 'done', { timeout: 20_000 });
     await expect(page.locator('[data-mascot]')).toBeHidden();
     await expect(page.locator('[data-rail]')).toHaveCSS('clip-path', 'none');
+    await expect(page.locator('.mascot-scene')).toHaveCSS('clip-path', 'none');
     await expect(page.locator('[data-rail]')).toHaveAttribute('data-axis', 'x');
     await expect(page.locator('[data-hint]')).toBeVisible();
+    await expectFits(page);
+  });
+
+  test("the cable's notes and drawings come in in reading order", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-stage', 'cable', { timeout: 5000 });
+    const delays = await page.evaluate(() => {
+      const delay = (element: Element): number =>
+        Number(element.getAnimations()[0]?.effect?.getTiming().delay ?? Number.NaN);
+      const band = document.querySelector('[data-cable-phone]');
+      if (band === null) throw new Error('No band.');
+      return {
+        first: delay(band.querySelector('.note-run') as Element),
+        drawings: Array.from(band.querySelectorAll('.doodle')).map(delay),
+        second: delay(band.querySelector('.note-tangle') as Element),
+      };
+    });
+    expect(delays.drawings).toHaveLength(5);
+    expect(delays.first).toBeLessThan(delays.drawings[0]);
+    for (let index = 1; index < 5; index += 1) {
+      expect(delays.drawings[index]).toBeGreaterThan(delays.drawings[index - 1]);
+    }
+    expect(delays.drawings[4]).toBeLessThan(delays.second);
+  });
+
+  test('turning the phone while the mascot is out ends on the finished page', async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-stage', 'mascot', { timeout: 20_000 });
+    await page.setViewportSize({ width: 844, height: 390 });
+    await expect(page.locator('html')).toHaveAttribute('data-stage', 'done', { timeout: 3000 });
+    await expect(page.locator('[data-mascot]')).toBeHidden();
+    await expect(page.locator('.mascot-scene')).toHaveCSS('clip-path', 'none');
+    await expect(page.locator('[data-rail]')).toHaveAttribute('data-axis', 'y');
+    await page.waitForTimeout(500);
     await expectFits(page);
   });
 

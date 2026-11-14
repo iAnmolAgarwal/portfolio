@@ -65,6 +65,10 @@ const ROLL_RAMP_MS = 1600;
 // After a skip: how long what was in mid-air takes to come to rest, and how
 // quickly the rail gets up to speed.
 const SETTLE_MS = 240;
+// Everything is in its finished place this long after a skip.
+const SETTLED_BY_MS = 350;
+// What was already fading in when the skip came is hurried to end within this.
+const HURRIED_MS = 250;
 const QUICK_RAMP_MS = 600;
 
 // ---------- the drawings ----------
@@ -218,7 +222,8 @@ export function createPageOpening(
   const wires = findAll<SVGPathElement>(`${cable} .wire`);
   const tangleNotes = findAll<SVGTextElement>(`${cable} .note-tangle`);
   const runNotes = findAll<SVGTextElement>(`${cable} .note-run`);
-  const doodleRows = findAll<SVGSVGElement>(`${cable} svg`).map((drawing) =>
+  // Each drawing's small drawings, which come in one after another.
+  const doodleRows = findAll<HTMLElement>(cable).map((drawing) =>
     findAll<SVGGElement>('.doodle', drawing),
   );
   const plugs = findAll<SVGGElement>(`${cable} .plug`);
@@ -249,6 +254,23 @@ export function createPageOpening(
   let caught: Caught | undefined;
   // When the rail starts to move, once it has been lit.
   let railRollsAt: number | undefined;
+  // Whether a skip has asked for what is still moving to be hurried along.
+  let hurryAfter = false;
+
+  /**
+   * Speeds up every transition still running so that it ends within the quick
+   * pace of a skip: the stylesheet's rule only reaches the ones that start now.
+   */
+  function hurry(): void {
+    for (const animation of document.getAnimations()) {
+      if (!(animation instanceof CSSTransition) || animation.playState !== 'running') continue;
+      const timing = animation.effect?.getComputedTiming();
+      const end = Number(timing?.endTime ?? 0);
+      const left = (end - Number(animation.currentTime ?? 0)) / animation.playbackRate;
+      if (left > HURRIED_MS) animation.updatePlaybackRate((animation.playbackRate * left) / HURRIED_MS);
+    }
+  }
+
 
   /**
    * Starts an animation that holds its first frame until its delay is up and, by
@@ -449,6 +471,7 @@ export function createPageOpening(
     if (caught !== undefined) settle(caught);
     caught = undefined;
 
+
     if (!cast.set.isOn()) cast.set.switchOn();
     // A rail that is already moving is left alone, so that it does not jump back.
     if (railRollsAt === undefined || performance.now() < railRollsAt) {
@@ -470,9 +493,17 @@ export function createPageOpening(
     },
     skip(how) {
       if (timeline.stage() === 'done') return;
+      // What the stylesheet still has to fade or move into place gets there
+      // quickly too. Marked before the stage changes, so that the transitions
+      // the change starts already run at the quick pace.
+      root.setAttribute('data-settling', '');
+      setTimeout(() => root.removeAttribute('data-settling'), SETTLED_BY_MS);
+      hurryAfter = true;
       // Read where things are before the stage changes under them.
       if (how === 'eased') caught = catchInMidAir();
       timeline.skip();
+      // Fades that were already under way at the opening's pace finish at the quick one.
+      if (hurryAfter) hurry();
     },
     isDone: () => timeline.stage() === 'done',
     finished: timeline.finished,

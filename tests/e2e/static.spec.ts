@@ -213,6 +213,14 @@ for (const size of SIZES) {
       }
     });
 
+    test('starts the rail at least 24px under the line beneath his name', async ({ page }) => {
+      await open(page, size);
+      const line = await boxOf(page.locator('[data-tagline]'));
+      // The rail's top: where its tracks and its fade begin.
+      const rail = await boxOf(page.locator('.results'));
+      expect(rail.y - (line.y + line.height)).toBeGreaterThanOrEqual(24);
+    });
+
     test('says what he is on one line under his name', async ({ page }) => {
       await open(page, size);
       const tagline = page.locator('[data-tagline]');

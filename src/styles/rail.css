@@ -7,7 +7,17 @@
 .results {
   position: absolute;
   left: calc(var(--sheet-x) + 30 * var(--u));
-  top: calc(var(--sheet-y) + 104 * var(--u));
+  /*
+   * Its top is 104 down the sheet, or 24px under the line beneath his name if
+   * that is lower: on a short window the line's lettering is held at 11px while
+   * the sheet shrinks, and the rail gives up its top rather than crowd it. The
+   * line's bottom is the top bar's top (34), the name (30, line height 1.1), the
+   * gap (5) and the line itself (line height 1.3), as `page.css` sets them.
+   */
+  top: calc(
+    var(--sheet-y) +
+      max(104 * var(--u), 72 * var(--u) + 1.3 * max(11px, 13 * var(--u)) + 24px)
+  );
   bottom: calc(var(--sheet-y) + 16 * var(--u));
   width: calc(233 * var(--ru));
 }

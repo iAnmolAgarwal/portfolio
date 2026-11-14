@@ -326,3 +326,14 @@ html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged']) .now {
 html[data-stage='on'] .now:not([data-swapping]) {
   transition-delay: var(--words-after, 0s);
 }
+
+/*
+ * A skipped opening settles at once: whatever was still to fade or move into its
+ * finished place gets there in a quarter of a second, not at the opening's own
+ * slower pace. The script marks the page for that moment only.
+ */
+html[data-settling] :is(.now, .hint, .rail, .dial-num, .knob[data-dial], .osd),
+html[data-settling] .screen::after {
+  transition-duration: 0.25s !important;
+  transition-delay: 0s !important;
+}
