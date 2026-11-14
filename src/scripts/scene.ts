@@ -252,17 +252,34 @@ export function createPageOpening(
 
   // ----- the beats -----
 
+  // The fade up, kept until it can be let go of.
+  const risen: Animation[] = [];
+
+  // Once the name and the set have risen and the stage has moved past `off`, the
+  // stylesheet has them where they rest and the fade up is let go of. It must
+  // not be held: an animation held on the set's transform makes the set the box
+  // that the mascot's scene, fixed to the window, is placed in and clipped to.
+  function letGoOfRisen(): void {
+    if (root.dataset.stage === 'off') return;
+    for (const animation of risen) {
+      if (animation.playState === 'finished') animation.cancel();
+    }
+  }
+
   // The name, the links and the set fade up from where the stylesheet has them
-  // waiting. The stage moves on under these, so they hold their last frame too.
+  // waiting. The stage may still be `off` when they arrive, so they hold their
+  // last frame until it is not.
   function fadeUp(): void {
     const rise = (el: HTMLElement, duration: number, delay: number): void => {
       const { opacity, transform } = getComputedStyle(el);
-      animate(el, [{ opacity, transform }, { opacity: 1, transform: 'none' }], {
+      const animation = animate(el, [{ opacity, transform }, { opacity: 1, transform: 'none' }], {
         duration,
         delay,
         easing: RISE,
         fill: 'both',
       });
+      risen.push(animation);
+      animation.finished.then(letGoOfRisen, () => undefined);
     };
     rise(top, TOP_MS, 0);
     rise(set, SET_MS, SET_AFTER_MS);
@@ -272,6 +289,7 @@ export function createPageOpening(
   // drawings come early, the second note as the line arrives, then the plug and
   // the ring that pulses out from it.
   function drawCable(): void {
+    letGoOfRisen();
     animate(wire, WIRE_FRAMES, { duration: WIRE_MS, delay: WIRE_AFTER_MS, easing: WIRE_EASING });
     animate(tangleNote, APPEAR_FRAMES, {
       duration: NOTE_MS,

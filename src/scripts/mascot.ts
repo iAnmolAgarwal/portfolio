@@ -295,6 +295,13 @@ interface Stance {
 
 type Frames = () => Keyframe[];
 
+/**
+ * The scene now playing on each mascot. A scene that has ended tidies away only
+ * what is still its own, so it cannot undo a newer scene started on the same
+ * mascot in the meantime.
+ */
+const playing = new WeakMap<HTMLElement, object>();
+
 function part<T extends Element>(root: Element, selector: string): T {
   const found = root.querySelector<T>(selector);
   if (found === null) throw new Error(`The mascot has no ${selector}.`);
@@ -333,6 +340,8 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
   }
 
   const view = root.ownerDocument.defaultView;
+  const token = {};
+  playing.set(root, token);
   /** The animation each part is running or holding, and how to redraw its frames. */
   const held = new Map<Element, { animation: Animation; frames: Frames }>();
   /** Whether the beam has been given its length for this scene yet. */
@@ -557,12 +566,18 @@ export function playMascot(root: HTMLElement, opts: MascotOptions): Promise<void
   }
 
   return new Promise<void>((resolve, reject) => {
-    /** Puts the mascot, the torch and the beam back as the finished page has them. */
+    /**
+     * Puts the mascot, the torch and the beam back as the finished page has them.
+     * It runs twice on an abort: at once, and again when the scene's last step
+     * gives up. By the second time a new scene may have started on this mascot.
+     */
     function clear(): void {
       signal.removeEventListener('abort', onAbort);
       view?.removeEventListener('resize', follow);
       for (const { animation } of held.values()) animation.cancel();
       held.clear();
+      if (playing.get(root) !== token) return;
+      playing.delete(root);
       root.removeAttribute('data-playing');
       beam.style.removeProperty('--beam-length');
     }

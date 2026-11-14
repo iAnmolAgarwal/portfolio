@@ -1,12 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// The opening: the cable draws itself, the plug goes in, the set powers on and
-// the rail appears, and a click or a key at any moment lands on the finished page.
+// The opening: the cable draws itself, the plug goes in, the set powers on, the
+// mascot lights the rail, and a click or a key at any moment lands on the finished page.
 //
 // Timers run on Playwright's clock, paused before the page loads, so every wait
 // below is exact. Animations and the clips still run in real time, which is why
 // the two things the opening waits on that are not timers (the first clip being
 // ready, and the picture coming on behind the power-on flash) are polled for.
+// The mascot's scene is made of animations too: to see it through, the clock is
+// let run in real time and stopped again once the opening is over (`playScene`).
+// The scene itself is tested in `mascot.spec.ts`.
 
 test.skip(({ isMobile }) => isMobile, 'The desktop arrangement; the phone has its own tests.');
 
@@ -14,9 +17,10 @@ test.skip(({ isMobile }) => isMobile, 'The desktop arrangement; the phone has it
 const CABLE_MS = 500;
 const PLUG_MS = 4200;
 const POWER_MS = 4380;
+// The clock's reading when the page's script starts.
+const START_MS = 1000;
 // After the picture comes on.
-const RAIL_AFTER_PICTURE_MS = 780;
-const DONE_AFTER_RAIL_MS = 2000;
+const MASCOT_AFTER_PICTURE_MS = 780;
 // The longest the set waits for its first clip, counted from the plug.
 const POWER_ON_CAP_MS = 1500;
 // How long a script that never arrives is waited for before the page is shown finished.
@@ -42,7 +46,7 @@ test.afterEach(({ page }) => {
 
 async function load(page: Page): Promise<void> {
   await page.clock.install({ time: 0 });
-  await page.clock.pauseAt(1000);
+  await page.clock.pauseAt(START_MS);
   await page.goto('/');
 }
 
@@ -108,6 +112,46 @@ async function record(page: Page, attribute: string): Promise<() => Promise<stri
     );
 }
 
+/**
+ * Notes the clock's reading, after the page's script started, each time the set
+ * changes channel from now on. While the clock runs in real time it reads a few
+ * milliseconds past the moment a timer was due, so these are a little late.
+ */
+async function channelTimes(page: Page): Promise<() => Promise<number[]>> {
+  await page.evaluate((start) => {
+    const times: number[] = [];
+    Object.assign(window, { channelTimes: times });
+    new MutationObserver(() => times.push(Date.now() - start)).observe(
+      document.documentElement,
+      { attributeFilter: ['data-channel'] },
+    );
+  }, START_MS);
+  return () => page.evaluate(() => (window as unknown as { channelTimes: number[] }).channelTimes);
+}
+
+// How late a reading taken while the clock runs in real time may be.
+const LATE_MS = 50;
+
+/**
+ * Checks that the set changed by itself once while the clock ran in real time,
+ * 7 s after the picture came on, and changes again 7 s after that.
+ */
+async function expectCountKept(
+  page: Page,
+  times: () => Promise<number[]>,
+  now: number,
+  pictureAt: number,
+): Promise<void> {
+  await expectChannel(page, 2);
+  const [second] = await times();
+  expect(second).toBeGreaterThanOrEqual(pictureAt + AUTO_MS);
+  expect(second).toBeLessThan(pictureAt + AUTO_MS + LATE_MS);
+  await runTo(page, now, second + AUTO_MS - LATE_MS);
+  await expectChannel(page, 2);
+  await page.clock.runFor(LATE_MS);
+  await expectChannel(page, 3);
+}
+
 async function setHidden(page: Page, hidden: boolean): Promise<void> {
   await page.evaluate((value) => {
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => value });
@@ -126,6 +170,25 @@ async function toPicture(page: Page): Promise<void> {
   await expect.poll(() => playing(page)).toEqual([STUDIO]);
 }
 
+/**
+ * Lets the mascot's scene play out in real time, then stops the clock again.
+ * Returns the clock's reading, in milliseconds after the page's script started.
+ */
+async function playScene(page: Page): Promise<number> {
+  await expectStage(page, 'mascot');
+  await page.clock.resume();
+  await expect(page.locator('html')).toHaveAttribute('data-stage', 'done', { timeout: 20_000 });
+  const now = (await page.evaluate(() => Date.now())) + 1;
+  await page.clock.pauseAt(now);
+  return now - START_MS;
+}
+
+/** Runs the clock on to `ms` after the page's script started. */
+async function runTo(page: Page, from: number, ms: number): Promise<void> {
+  expect(ms).toBeGreaterThan(from);
+  await page.clock.runFor(ms - from);
+}
+
 async function expectNoScrollbar(page: Page): Promise<void> {
   const extent = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -138,18 +201,18 @@ async function expectNoScrollbar(page: Page): Promise<void> {
 }
 
 /** The finished page, as a skip must leave it. Moves the clock on by 400 ms. */
-async function expectFinished(page: Page): Promise<void> {
+async function expectFinished(page: Page, channel: 1 | 2 = 1): Promise<void> {
   await expectStage(page, 'done');
   expect((await openingAnimations(page)).filter((id) => id === 'opening')).toEqual([]);
 
   await page.clock.runFor(400);
   await expect(page.locator('[data-rail]')).toBeVisible();
   await expectRailMoving(page);
-  await expectChannel(page, 1);
-  await expect.poll(() => playing(page)).toEqual([STUDIO]);
+  await expectChannel(page, channel);
+  await expect.poll(() => playing(page)).toEqual([[STUDIO, '/media/worth.mp4'][channel - 1]]);
   await expect(page.locator('[data-screen] video[data-on]')).toBeVisible();
   await expect(page.locator('[data-now-title]')).toBeVisible();
-  await expect(page.locator('[data-now-title]')).toHaveText('Studio');
+  await expect(page.locator('[data-now-title]')).toHaveText(['Studio', 'Worth'][channel - 1]);
   await expect(page.locator('[data-hint]')).toBeVisible();
   await expect(page.locator('[data-mascot]')).toBeHidden();
 
@@ -216,14 +279,14 @@ test('at one second the cable is being drawn and the set is still off', async ({
 test('at five seconds the set is on and the project has its words', async ({ page }) => {
   await load(page);
   await page.clock.runFor(5000);
-  await expectStage(page, /^(on|lit|done)$/);
+  await expectStage(page, /^(on|mascot|lit|done)$/);
   await expect(page.locator('[data-now-title]')).toBeVisible();
   await expect(page.locator('[data-now-title]')).toHaveText('Studio');
   await expect.poll(() => opacityOf(page, '[data-now]')).toBe(1);
   await expect.poll(() => playing(page)).toEqual([STUDIO]);
 });
 
-test('plays through: the cable, the plug, power, the picture, the rail, then the note by the dial', async ({
+test('plays through: the cable, the plug, power, the picture, the mascot and the rail, then the note by the dial', async ({
   page,
 }) => {
   await load(page);
@@ -274,31 +337,29 @@ test('plays through: the cable, the plug, power, the picture, the rail, then the
   await expect(page.locator('[data-hint]')).toBeHidden();
   await expectNoScrollbar(page);
 
-  await page.clock.runFor(RAIL_AFTER_PICTURE_MS - 1);
-  await expect(page.locator('[data-rail]')).toBeHidden();
+  await page.clock.runFor(MASCOT_AFTER_PICTURE_MS - 1);
+  await expectStage(page, 'on');
+  await expect(page.locator('[data-mascot]')).toBeHidden();
   await page.clock.runFor(1);
-  await expectStage(page, 'lit');
-  await expect(page.locator('[data-rail]')).toBeVisible();
+  await expectStage(page, 'mascot');
+  await expect(page.locator('[data-mascot]')).toBeVisible();
+  await expect(page.locator('[data-rail]')).toBeHidden();
   await expect(page.locator('[data-hint]')).toBeHidden();
 
-  await page.clock.runFor(DONE_AFTER_RAIL_MS - 1);
-  await expectStage(page, 'lit');
-  await page.clock.runFor(1);
-  await expectStage(page, 'done');
+  const times = await channelTimes(page);
+  const now = await playScene(page);
   await expect(page.locator('[data-hint]')).toBeVisible();
   await expect.poll(() => opacityOf(page, '[data-hint]')).toBe(1);
   await expect(page.locator('[data-mascot]')).toBeHidden();
+  await expect(page.locator('[data-rail]')).toBeVisible();
 
-  expect(await stages()).toEqual(['cable', 'plugged', 'on', 'lit', 'done']);
+  expect(await stages()).toEqual(['cable', 'plugged', 'on', 'mascot', 'lit', 'done']);
   expect((await openingAnimations(page)).filter((id) => id === 'opening')).toEqual([]);
 
-  // The rail rolls, and the set is counting from the moment the picture came on.
-  await page.clock.runFor(2000);
+  // The rail rolls, and the set has been counting from the moment the picture came
+  // on: it changed by itself once during the scene, and does again 7 s later.
   await expectRailMoving(page);
-  await page.clock.runFor(AUTO_MS - RAIL_AFTER_PICTURE_MS - DONE_AFTER_RAIL_MS - 2000 - 1);
-  await expectChannel(page, 1);
-  await page.clock.runFor(1);
-  await expectChannel(page, 2);
+  await expectCountKept(page, times, now, POWER_MS);
 });
 
 test.describe('a click on the page background lands on the finished page', () => {
@@ -321,12 +382,14 @@ test.describe('a click on the page background lands on the finished page', () =>
     await expectChannel(page, 2);
   });
 
-  test('at six seconds, while the rail is being revealed', async ({ page }) => {
+  test('at six seconds, while the mascot is out', async ({ page }) => {
     await load(page);
     await toPicture(page);
     await page.clock.runFor(6000 - POWER_MS);
-    await expectStage(page, 'lit');
-    // The rail has been revealed but has not begun to roll.
+    await expectStage(page, 'mascot');
+    await expect(page.locator('[data-mascot]')).toBeVisible();
+    // The rail has not been revealed and has not begun to roll.
+    await expect(page.locator('[data-rail]')).toBeHidden();
     expect(await rolled(page)).toBe(0);
 
     await page.mouse.click(BACKGROUND.x, BACKGROUND.y);
@@ -339,23 +402,22 @@ test.describe('a click on the page background lands on the finished page', () =>
     await expectChannel(page, 2);
   });
 
-  test('at nine seconds, when the opening is over, it changes nothing', async ({ page }) => {
+  test('once the opening is over, it changes nothing', async ({ page }) => {
     await load(page);
     await toPicture(page);
-    await page.clock.runFor(9000 - POWER_MS);
-    await expectStage(page, 'done');
+    await page.clock.runFor(MASCOT_AFTER_PICTURE_MS);
+    const times = await channelTimes(page);
+    const now = await playScene(page);
     await expect.poll(() => rolled(page)).toBeGreaterThan(0);
     const before = await rolled(page);
 
     await page.mouse.click(BACKGROUND.x, BACKGROUND.y);
-    await expectFinished(page);
+    await expectFinished(page, 2);
     // The rail was not started again from the top.
     expect(await rolled(page)).toBeGreaterThanOrEqual(before);
 
-    await page.clock.runFor(POWER_MS + AUTO_MS - 9000 - 400 - 1);
-    await expectChannel(page, 1);
-    await page.clock.runFor(1);
-    await expectChannel(page, 2);
+    // The set keeps the count it began when the picture came on.
+    await expectCountKept(page, times, now + 400, POWER_MS);
   });
 });
 
@@ -468,14 +530,10 @@ test('with the first clip stalled the set still powers on, showing its poster', 
   await expect.poll(() => opacityOf(page, '[data-now]')).toBe(1);
 
   // The rest of the opening follows, and the set counts from when it came on.
-  await page.clock.runFor(RAIL_AFTER_PICTURE_MS);
-  await expectStage(page, 'lit');
-  await page.clock.runFor(DONE_AFTER_RAIL_MS);
-  await expectStage(page, 'done');
-  await page.clock.runFor(AUTO_MS - RAIL_AFTER_PICTURE_MS - DONE_AFTER_RAIL_MS - 1);
-  await expectChannel(page, 1);
-  await page.clock.runFor(1);
-  await expectChannel(page, 2);
+  await page.clock.runFor(MASCOT_AFTER_PICTURE_MS);
+  const times = await channelTimes(page);
+  const now = await playScene(page);
+  await expectCountKept(page, times, now, PLUG_MS + POWER_ON_CAP_MS);
 
   await page.unrouteAll({ behavior: 'ignoreErrors' });
 });

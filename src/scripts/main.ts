@@ -5,6 +5,7 @@ import { CHANNELS, TIMING } from '../data/site';
 import { createChannels } from './channels';
 import { channelToAngle, setDialValue, wireDial } from './dial';
 import { find } from './dom';
+import { playMascot } from './mascot';
 import { startRail } from './rail';
 import { createPageOpening, type Cast, type Scene } from './scene';
 
@@ -346,16 +347,25 @@ function initChannels(reduced: boolean): Cast['set'] {
 // ---------- the opening ----------
 
 // The picture comes on 520 ms into power-on, and the mascot is due 1300 ms into it.
-const RAIL_AFTER_PICTURE_MS = 780;
-const DONE_AFTER_RAIL_MS = 2000;
+const MASCOT_AFTER_PICTURE_MS = 780;
 
-// What follows the picture coming on, until the opening is over: the rail is
-// revealed, and a little later the opening ends, which is when the note beside
-// the dial fades in. The mascot's scene takes the place of this one function.
-async function railHandOff(scene: Scene): Promise<void> {
-  await scene.wait(RAIL_AFTER_PICTURE_MS);
-  scene.lightRail();
-  await scene.wait(DONE_AFTER_RAIL_MS);
+/**
+ * What follows the picture coming on, until the opening is over: the mascot peeks
+ * round the set, climbs on top and lights the rail with its torch. The rail opens
+ * as the light passes over it, and when the mascot has gone the opening ends,
+ * which is when the note beside the dial fades in.
+ */
+function mascotScene(mascot: HTMLElement, tv: HTMLElement): (scene: Scene) => Promise<void> {
+  return async (scene) => {
+    await scene.wait(MASCOT_AFTER_PICTURE_MS);
+    scene.setStage('mascot');
+    await playMascot(mascot, {
+      tv,
+      beamTarget: 'down',
+      signal: scene.signal,
+      onTorchOn: scene.lightRail,
+    });
+  };
 }
 
 // ---------- everything the page starts ----------
@@ -372,7 +382,7 @@ function start(): void {
       set: initChannels(reduced),
       rollRail: (delayMs, rampMs) => startRail(rail, { delayMs, rampMs, axis: 'y', reduced }),
     },
-    railHandOff,
+    mascotScene(find<HTMLElement>('[data-mascot]'), find<HTMLElement>('[data-tv]')),
   );
 
   // The opening plays only from the dark page the head set up for it. With

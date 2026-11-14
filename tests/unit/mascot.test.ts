@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   beamSweep,
   glanceCues,
+  playMascot,
   type Box,
   type EyeCue,
   type Point,
@@ -108,5 +109,84 @@ describe('glanceCues', () => {
     const cues = glanceCues(2);
     expect(cues[0].at).toBe(0);
     expect(cues[cues.length - 1].at).toBe(114 + 456 + 266 + 456 + 114 + 874);
+  });
+});
+
+// ---------- playMascot, with just enough of a page to run it ----------
+
+/** An animation that runs until it is cancelled. */
+function fakeAnimation(): Animation {
+  let fail: (reason: unknown) => void = () => undefined;
+  const finished = new Promise<Animation>((_, reject) => {
+    fail = reject;
+  });
+  finished.catch(() => undefined);
+  return {
+    finished,
+    effect: null,
+    cancel: () => fail(new DOMException('cancelled', 'AbortError')),
+  } as unknown as Animation;
+}
+
+/** An element with attributes, a style and a box, that can be animated. */
+function fakeElement(children: Record<string, unknown> = {}): HTMLElement {
+  const attributes = new Set<string>();
+  const view = { addEventListener: () => undefined, removeEventListener: () => undefined };
+  const el = {
+    hasAttribute: (name: string) => attributes.has(name),
+    removeAttribute: (name: string) => attributes.delete(name),
+    toggleAttribute: (name: string, on: boolean) => {
+      if (on) attributes.add(name);
+      else attributes.delete(name);
+      return on;
+    },
+    querySelector: (selector: string) => children[selector] ?? null,
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 400, bottom: 300, width: 400, height: 300 }),
+    animate: () => fakeAnimation(),
+    style: { setProperty: () => undefined, removeProperty: () => undefined },
+    offsetParent: null,
+    ownerDocument: {
+      defaultView: view,
+      documentElement: { getBoundingClientRect: () => ({ left: 0, top: 0 }), clientLeft: 0, clientTop: 0 },
+      querySelector: () => null,
+    },
+  };
+  return el as unknown as HTMLElement;
+}
+
+describe('playMascot', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('does not let a scene that was aborted tidy away a newer one', async () => {
+    vi.stubGlobal('getComputedStyle', () => ({ width: '54px', left: '0px', top: '0px' }));
+    const mascot = fakeElement({
+      '[data-eyes]': fakeElement(),
+      '[data-torch]': fakeElement(),
+      '[data-beam]': fakeElement(),
+    });
+    const tv = fakeElement();
+    const options = { tv, beamTarget: 'down' as const, onTorchOn: () => undefined };
+
+    const first = new AbortController();
+    const firstScene = playMascot(mascot, { ...options, signal: first.signal });
+    expect(mascot.hasAttribute('data-playing')).toBe(true);
+
+    // Aborted, and a new scene begun straight away, before the first has wound down.
+    first.abort();
+    expect(mascot.hasAttribute('data-playing')).toBe(false);
+    const second = new AbortController();
+    const secondScene = playMascot(mascot, { ...options, signal: second.signal });
+    expect(mascot.hasAttribute('data-playing')).toBe(true);
+
+    await expect(firstScene).rejects.toMatchObject({ name: 'AbortError' });
+    // Let every step the first scene had left run out.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mascot.hasAttribute('data-playing')).toBe(true);
+
+    second.abort();
+    await expect(secondScene).rejects.toMatchObject({ name: 'AbortError' });
+    expect(mascot.hasAttribute('data-playing')).toBe(false);
   });
 });
