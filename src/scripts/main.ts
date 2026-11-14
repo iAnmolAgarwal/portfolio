@@ -174,6 +174,7 @@ function initChannels(reduced: boolean, canDrag: () => boolean): Cast['set'] {
     title.textContent = channel.title;
     line.textContent = channel.line;
     now.style.setProperty('--accent', channel.accent);
+    now.style.setProperty('--link-accent', channel.linkAccent);
     // If one of the links has focus, the link that takes its place gets it, so
     // that replacing them never drops the visitor's place on the page.
     const focusAt = Array.from(links.children).findIndex((a) => a === document.activeElement);

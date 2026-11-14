@@ -554,7 +554,7 @@ test('lists the four results in the rail', async ({ page }) => {
   await openFinished(page);
   const rail = page.locator('[data-rail]');
   const results = [
-    ['HCLTech AMPLIfied', 'National Hackathon Winner', null],
+    ['HCLTech AMPLIfied', 'National Hackathon Winner', '#1'],
     ['HackerRank Orchestrate', '24 Hr Global Hackathon', '#6'],
     ['Amazon ML Challenge', 'Top 0.21% of 32,000+ Teams', '#66'],
     ['Codeforces Specialist', '28 Rated Contests', '1415'],

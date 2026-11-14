@@ -249,20 +249,20 @@ test.describe('the project links', () => {
     await open(page);
     const link = page.locator('[data-now-links] a').first();
     await expect(link).toHaveText(studio.links[0].label);
-    await expect(link).toHaveCSS('color', rgb(studio.accent));
+    await expect(link).toHaveCSS('color', rgb(studio.linkAccent));
 
     const restTop = await topOf(link);
     const rest = await underline(link);
     expect(rest.scale).toBe(1);
-    expect(rest.colour).toBe(rgb(studio.accent));
+    expect(rest.colour).toBe(rgb(studio.linkAccent));
     expect(rest.opacity).toBeLessThan(1);
 
     await link.hover();
     await expect.poll(() => topOf(link)).toBeCloseTo(restTop - 2, 1);
     await expect
       .poll(() => underline(link))
-      .toEqual({ scale: 1, colour: rgb(studio.accent), opacity: 1 });
-    await expect(link).toHaveCSS('color', rgb(studio.accent));
+      .toEqual({ scale: 1, colour: rgb(studio.linkAccent), opacity: 1 });
+    await expect(link).toHaveCSS('color', rgb(studio.linkAccent));
     await expect(link).toHaveCSS('outline-style', 'none');
     await expect(link).toHaveText(studio.links[0].label);
   });

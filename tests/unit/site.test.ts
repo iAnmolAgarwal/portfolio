@@ -25,6 +25,8 @@ describe('CHANNELS', () => {
 
   it('gives each channel its accent colour', () => {
     expect(CHANNELS.map((c) => c.accent)).toEqual(['#d9481c', '#1b5fd1', '#6f4fe8']);
+    // Studio's link alone is a shade darker than its accent.
+    expect(CHANNELS.map((c) => c.linkAccent)).toEqual(['#c0400f', '#1b5fd1', '#6f4fe8']);
   });
 
   it('points each channel at its clip and poster', () => {
@@ -82,7 +84,7 @@ describe('RESULTS', () => {
       {
         id: 'amplified',
         name: 'HCLTech AMPLIfied',
-        number: null,
+        number: '#1',
         line: 'National Hackathon Winner',
       },
       {

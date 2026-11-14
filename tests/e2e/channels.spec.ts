@@ -309,6 +309,30 @@ test('with the clips unreachable the poster stays and the channels still change'
   expect(errors).toEqual([]);
 });
 
+test("each project's links are drawn in its link colour, Studio's a shade darker than its accent", async ({
+  page,
+}) => {
+  await open(page);
+  const links = page.locator('[data-now-links] a');
+  const colours = (): Promise<{ text: string; underline: string }[]> =>
+    links.evaluateAll((all) =>
+      all.map((a) => ({
+        text: getComputedStyle(a).color,
+        underline: getComputedStyle(a, '::after').backgroundColor,
+      })),
+    );
+  const expected = ['rgb(192, 64, 15)', 'rgb(27, 95, 209)', 'rgb(111, 79, 232)'];
+  for (const [index, colour] of expected.entries()) {
+    if (index > 0) {
+      await page.locator('[data-dial]').click();
+      await expectTitle(page, CHANNELS[index].title);
+    }
+    const drawn = await colours();
+    expect(drawn.length).toBe(CHANNELS[index].links.length);
+    for (const link of drawn) expect(link).toEqual({ text: colour, underline: colour });
+  }
+});
+
 test("each project's links go where the design says, in a new tab", async ({ page }) => {
   await open(page);
   await page.locator('[data-dial]').focus();

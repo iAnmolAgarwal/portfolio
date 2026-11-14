@@ -631,12 +631,100 @@ test.describe('touch does not leave anything stuck', () => {
     await expect(link).toHaveCSS('transform', 'none');
     await page.locator('[data-rail]').tap();
     await expect
-      .poll(() => page.locator('[data-rail]').evaluate((el) => Number(getComputedStyle(el).opacity)))
+      .poll(() =>
+        page
+          .locator('[data-rail] .card .art')
+          .first()
+          .evaluate((el) => Number(getComputedStyle(el).opacity)),
+      )
       .toBeCloseTo(0.62, 2);
   });
 });
 
+/**
+ * Each of the rail's words in the first copy of the cards: its own colour, how
+ * strongly it is drawn (its own opacity and every element's above it), and the
+ * contrast that gives it against the paper.
+ */
+function railWords(
+  page: Page,
+): Promise<{ what: string; colour: string; strength: number; contrast: number }[]> {
+  return page.evaluate(() => {
+    const paper = [246, 246, 243];
+    const luminance = (rgb: number[]): number => {
+      const [r, g, b] = rgb.map((v) => {
+        const c = v / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const words = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-rail] .cards:first-child .cap > *'),
+    );
+    return words.map((element) => {
+      const colour = getComputedStyle(element).color;
+      const rgb = (colour.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+      let strength = 1;
+      for (let at: Element | null = element; at !== null; at = at.parentElement) {
+        strength *= Number(getComputedStyle(at).opacity);
+      }
+      const seen = rgb.map((v, i) => v * strength + paper[i] * (1 - strength));
+      const [light, dark] = [luminance(paper), luminance(seen)].sort((a, b) => b - a);
+      return {
+        what: `${element.tagName.toLowerCase()}${element.className ? `.${element.className}` : ''} ${element.textContent ?? ''}`,
+        colour,
+        strength,
+        contrast: (light + 0.05) / (dark + 0.05),
+      };
+    });
+  });
+}
+
 test.describe('the rail on a phone', () => {
+  test('draws its words at full strength, readable on the paper, and dims only the pictures and outlines', async ({
+    page,
+  }) => {
+    await open(page, PHONE);
+    const words = await railWords(page);
+    // A name, a line and a number on each of the four cards.
+    expect(words).toHaveLength(12);
+    for (const word of words) {
+      expect(word.strength, word.what).toBe(1);
+      expect(word.contrast, word.what).toBeGreaterThanOrEqual(4.5);
+    }
+    const colours = (tag: string): string[] =>
+      words.filter((word) => word.what.startsWith(`${tag} `)).map((word) => word.colour);
+    expect(new Set(colours('b'))).toEqual(new Set(['rgb(22, 22, 26)']));
+    expect(new Set(colours('span.rank'))).toEqual(new Set(['rgb(22, 22, 26)']));
+    expect(new Set(colours('span.sub'))).toEqual(new Set(['rgb(109, 109, 117)']));
+
+    const card = page.locator('[data-rail] .card').first();
+    for (const picture of await page.locator('[data-rail] .cards').first().locator('.art').all()) {
+      await expect(picture).toHaveCSS('opacity', '0.62');
+    }
+    await expect(card).toHaveCSS('border-top-color', 'rgba(22, 22, 26, 0.62)');
+    await expect(card.locator('.cap')).toHaveCSS('border-top-color', 'rgba(22, 22, 26, 0.62)');
+  });
+
+  for (const size of [
+    { width: 844, height: 390 },
+    { width: 900, height: 1300 },
+  ]) {
+    test(`at ${key(size)}, in the desktop arrangement, the rail is dimmed as a whole as before`, async ({
+      page,
+    }) => {
+      await open(page, size);
+      await expect(page.locator('html')).not.toHaveAttribute('data-phone');
+      await expect(page.locator('[data-rail]')).toHaveCSS('opacity', '0.62');
+      for (const word of await railWords(page)) expect(word.strength, word.what).toBeCloseTo(0.62, 2);
+      await expect(page.locator('[data-rail] .card .art').first()).toHaveCSS('opacity', '1');
+      await expect(page.locator('[data-rail] .card').first()).toHaveCSS(
+        'border-top-color',
+        'rgb(22, 22, 26)',
+      );
+    });
+  }
+
   test('rolls leftward', async ({ page }) => {
     await open(page, PHONE);
     const from = await rolled(page);

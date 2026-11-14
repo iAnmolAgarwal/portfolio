@@ -12,7 +12,11 @@ interface Props {
 const { channel } = Astro.props;
 ---
 
-<section class="now" data-now style={`--accent: ${channel.accent}`}>
+<section
+  class="now"
+  data-now
+  style={`--accent: ${channel.accent}; --link-accent: ${channel.linkAccent}`}
+>
   <h2 class="now-title" data-now-title>{channel.title}</h2>
   <div class="now-lines">
     <p class="now-line" data-now-line>{channel.line}</p>

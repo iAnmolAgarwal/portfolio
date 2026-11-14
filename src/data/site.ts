@@ -12,6 +12,12 @@ export interface Channel {
   title: string;
   line: string;
   accent: string;
+  /**
+   * The colour of the project's links, text and underline. The accent itself
+   * where it reads well enough on the paper; Studio's orange is darkened a shade
+   * for its link only (his decision, 2026-11-14).
+   */
+  linkAccent: string;
   video: string;
   poster: string;
   links: ProjectLink[];
@@ -86,6 +92,7 @@ export const CHANNELS: readonly Channel[] = [
     title: 'Studio',
     line: 'A creator types a script and gets a finished video for Reels, TikTok and Shorts. Paid client work.',
     accent: '#d9481c',
+    linkAccent: '#c0400f',
     video: '/media/studio.mp4',
     poster: '/media/studio.jpg',
     links: [
@@ -101,6 +108,7 @@ export const CHANNELS: readonly Channel[] = [
     title: 'Worth',
     line: 'Tells you the day you can actually afford something. Built for the PayPal AI Hackathon.',
     accent: '#1b5fd1',
+    linkAccent: '#1b5fd1',
     video: '/media/worth.mp4',
     poster: '/media/worth.jpg',
     links: [
@@ -114,6 +122,7 @@ export const CHANNELS: readonly Channel[] = [
     title: 'Pathwise',
     line: 'A learning plan you can check step by step. Ranked #1 at HCLTech AMPLIfied.',
     accent: '#6f4fe8',
+    linkAccent: '#6f4fe8',
     video: '/media/pathwise.mp4',
     poster: '/media/pathwise.jpg',
     links: [
@@ -127,7 +136,7 @@ export const RESULTS: readonly Result[] = [
   {
     id: 'amplified',
     name: 'HCLTech AMPLIfied',
-    number: null,
+    number: '#1',
     line: 'National Hackathon Winner',
   },
   {

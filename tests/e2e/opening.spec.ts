@@ -85,6 +85,19 @@ function opacityOf(page: Page, selector: string): Promise<number> {
   return page.locator(selector).evaluate((element) => Number(getComputedStyle(element).opacity));
 }
 
+/**
+ * The rail at its resting strength: dimmed as a whole on the desktop sheet; on a
+ * phone only its pictures are, and its words are at full strength.
+ */
+async function expectRailAtRest(page: Page): Promise<void> {
+  const phone = (await page.locator('html').getAttribute('data-phone')) !== null;
+  await expect.poll(() => opacityOf(page, '[data-rail]')).toBeCloseTo(phone ? 1 : 0.62, 2);
+  if (phone) {
+    const picture = '[data-rail] .card .art >> nth=0';
+    await expect.poll(() => opacityOf(page, picture)).toBeCloseTo(0.62, 2);
+  }
+}
+
 /** The opening's own animations still alive, and anything still easing after a skip. */
 function openingAnimations(page: Page): Promise<string[]> {
   return page.evaluate(() =>
@@ -251,7 +264,7 @@ async function expectFinished(page: Page, channel: 1 | 2 | 3 | 'current' = 1): P
   await expect.poll(() => openingAnimations(page)).toEqual([]);
   await expect.poll(() => opacityOf(page, '[data-now]')).toBe(1);
   await expect.poll(() => opacityOf(page, '[data-hint]')).toBe(1);
-  await expect.poll(() => opacityOf(page, '[data-rail]')).toBeCloseTo(0.62, 2);
+  await expectRailAtRest(page);
   await expect.poll(() => opacityOf(page, `${CABLE} .wire`)).toBe(1);
   for (const part of ['.note-tangle', '.note-run', '.doodle', '.plug']) {
     for (const each of await page.locator(`.cable ${part}`).all()) {
@@ -794,7 +807,7 @@ test.describe('a skipped page settles quickly', () => {
       await expect(page.locator('html')).toHaveAttribute('data-stage', 'done');
       expect(await opacityOf(page, '[data-now]')).toBe(1);
       expect(await opacityOf(page, '[data-hint]')).toBe(1);
-      expect(await opacityOf(page, '[data-rail]')).toBeCloseTo(0.62, 2);
+      await expectRailAtRest(page);
     });
   }
 });

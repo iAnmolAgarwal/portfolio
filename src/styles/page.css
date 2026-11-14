@@ -286,9 +286,9 @@ body {
   margin-top: calc(14 * var(--u));
 }
 
-/* Project links take the colour of the channel that is on. */
+/* Project links take the colour of the channel that is on, as its links have it. */
 .now-links .link {
-  color: var(--accent);
+  color: var(--link-accent, var(--accent));
 }
 
 .now-links .link::after {

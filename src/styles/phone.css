@@ -461,4 +461,49 @@
   .card .rank {
     font-size: calc(19 * var(--p));
   }
+
+  /*
+   * The strip sits back from the set, but its words are read at full strength
+   * (his decision, 2026-11-14): the dimming the desktop rail has as a whole is
+   * on the pictures and the outlines here, not on the names, captions and
+   * numbers. Each card's paper is under its picture as it was under the rail, so
+   * those look as they did.
+   */
+  .rail {
+    opacity: 1;
+  }
+
+  .card {
+    border-color: rgba(22, 22, 26, 0.62);
+  }
+
+  .card .cap {
+    border-top-color: rgba(22, 22, 26, 0.62);
+  }
+
+  .card .art {
+    opacity: 0.62;
+    transition: opacity 0.9s ease;
+  }
+
+  /* With the keyboard in it the pictures come to full strength, as the rail does. */
+  .rail:focus-visible .card .art {
+    opacity: 1;
+  }
+
+  .rail:has(:focus-visible) .card .art {
+    opacity: 1;
+  }
+
+  @media (hover: hover) {
+    .rail:hover .card .art {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card .art {
+      transition-duration: 0.2s;
+    }
+  }
 }
