@@ -81,6 +81,26 @@
   visibility: hidden;
 }
 
+/*
+ * The one that is on is the uppermost of them. That order is kept among the clips:
+ * the static, the power-on glare and the channel readout all lie over the picture.
+ */
+.media {
+  isolation: isolate;
+}
+
+.media video[data-on] {
+  z-index: 1;
+}
+
+/*
+ * With reduced motion a channel change is a cross-fade: the picture that was on
+ * stays underneath while the new one fades in over it.
+ */
+.media video[data-leaving] {
+  visibility: visible;
+}
+
 /* Layers over the picture, all clear while the set is simply playing. */
 .static,
 .crt {
@@ -148,6 +168,11 @@
   font-family: var(--mono);
   font-size: 9px;
   font-weight: 500;
+  /* Only the opening makes the last two wait; a channel change is immediate. */
+  transition:
+    opacity 0.6s,
+    fill 0s,
+    font-weight 0s;
 }
 
 html[data-channel='1'] .dial-num[data-n='1'],
@@ -299,13 +324,23 @@ html[data-channel='3'] {
   pointer-events: none;
   transition:
     opacity 0.8s ease,
-    visibility 0s linear 0.8s;
+    transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-/* Once the visitor has turned the dial, the note has done its job. */
+/* The note is the opening's last word: it eases in when everything else is done. */
+html:not([data-stage='done']) .hint {
+  opacity: 0;
+  transform: translateX(calc(8 * var(--u)));
+  visibility: hidden;
+}
+
+/* Once the visitor has turned the dial, the note has done its job and fades away. */
 html[data-touched] .hint {
   opacity: 0;
   visibility: hidden;
+  transition:
+    opacity 0.8s ease,
+    visibility 0s linear 0.8s;
 }
 
 .hint svg {
@@ -321,4 +356,58 @@ html[data-touched] .hint {
   font-size: calc(22 * var(--u));
   font-style: italic;
   line-height: 1.05;
+}
+
+/* ---------- the opening: the set before it is switched on ---------- */
+
+/* A faint sheen on the dark glass, gone once there is a picture. */
+.screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 90% at 24% 0%,
+    rgba(255, 255, 255, 0.07),
+    rgba(255, 255, 255, 0) 50%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s;
+}
+
+/* Off: a dark screen with its sheen, and dim numbers round the dial. */
+html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged']) .media {
+  visibility: hidden;
+}
+
+html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged']) .screen::after {
+  opacity: 1;
+}
+
+html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged']) .dial-num {
+  opacity: 0.35;
+}
+
+/* No channel is picked out yet, and the dial points straight up. */
+html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged'])[data-channel]
+  .dial-num[data-n] {
+  fill: var(--muted);
+  font-weight: 500;
+}
+
+html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged']) .knob[data-dial] {
+  --dial-angle: 0deg;
+}
+
+/*
+ * Like the words under the set, these follow the picture, not the flash: the
+ * sheen goes, the numbers come up, and the dial turns to channel 1.
+ */
+html[data-stage='on'] .screen::after,
+html[data-stage='on'] .dial-num {
+  transition-delay: var(--picture-after, 0s);
+}
+
+html[data-stage='on'] .knob[data-dial] {
+  transition-delay: var(--picture-after, 0s), 0s, 0s;
 }

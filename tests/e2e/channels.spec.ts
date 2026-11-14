@@ -1,8 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openFinished } from './finished';
 
-// The set changing channel: by itself every 7 seconds, and by the dial. Timers run
-// on Playwright's clock, which is paused before the page loads, so every wait below
-// is exact. Animations and the clips themselves still run in real time.
+// The set changing channel: by itself every 7 seconds, and by the dial, on the
+// finished page. Timers run on Playwright's clock, which is paused before the page
+// loads, so every wait below is exact, counted from the moment the opening is
+// skipped and the set comes on. Animations and the clips themselves still run in
+// real time.
 
 test.skip(({ isMobile }) => isMobile, 'The desktop arrangement; the phone has its own tests.');
 
@@ -41,7 +44,7 @@ const TEXT_MS = 240;
 async function open(page: Page): Promise<void> {
   await page.clock.install({ time: 0 });
   await page.clock.pauseAt(1000);
-  await page.goto('/');
+  await openFinished(page);
   await expect(page.locator('html')).toHaveAttribute('data-channel', '1');
 }
 

@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { CHANNELS } from '../../src/data/site';
+import { openFinished } from './finished';
 
 // The rail rolling and the links answering the pointer and the keyboard, on the
 // finished page with channel 1 on screen.
@@ -7,7 +8,7 @@ import { CHANNELS } from '../../src/data/site';
 test.skip(({ isMobile }) => isMobile, 'The desktop arrangement; the phone has its own tests.');
 
 async function open(page: Page): Promise<void> {
-  await page.goto('/');
+  await openFinished(page);
   await page.evaluate(() => document.fonts.ready);
 }
 

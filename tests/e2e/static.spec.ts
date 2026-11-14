@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { PERSON } from '../../src/data/site';
+import { openFinished } from './finished';
 
 // The finished page as it stands with nothing moving: what a visitor sees once the
 // opening has played, with channel 1 on screen.
@@ -33,7 +34,7 @@ function intersect(a: Box, b: Box): boolean {
 
 async function open(page: Page, size: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(size);
-  await page.goto('/');
+  await openFinished(page);
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -75,15 +76,25 @@ for (const size of SIZES) {
   });
 }
 
-test('is served already finished, on channel 1', async ({ page }) => {
+// The page as it is served, which is what a visitor with scripting off is left with.
+test('is served already finished, on channel 1', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-stage', 'done');
   await expect(page.locator('html')).toHaveAttribute('data-channel', '1');
   await expect(page.locator('[data-now-title]')).toHaveText('Studio');
+  // Nothing is waiting for an opening that will never play.
+  for (const hook of ['[data-now-title]', '[data-rail]', '[data-hint]', '[data-cable]']) {
+    await expect(page.locator(hook)).toBeVisible();
+  }
+  await expect(page.locator('[data-screen] video[data-on]')).toBeVisible();
+  await expect(page.locator('[data-mascot]')).toBeHidden();
+  await context.close();
 });
 
 test('shows Studio on the screen and loads every picture', async ({ page }) => {
-  await page.goto('/');
+  await openFinished(page);
   await expect(page.locator('[data-screen] video[data-on]')).toHaveAttribute(
     'poster',
     '/media/studio.jpg',
@@ -98,7 +109,7 @@ test('shows Studio on the screen and loads every picture', async ({ page }) => {
 });
 
 test('has the three top links, each opening its target in a new tab', async ({ page }) => {
-  await page.goto('/');
+  await openFinished(page);
   const links = page.getByRole('banner').getByRole('link');
   await expect(links).toHaveText(['GitHub', 'LinkedIn', 'Resume']);
 
@@ -112,7 +123,7 @@ test('has the three top links, each opening its target in a new tab', async ({ p
 });
 
 test('lists the four results in the rail', async ({ page }) => {
-  await page.goto('/');
+  await openFinished(page);
   const rail = page.locator('[data-rail]');
   const results = [
     ['HCLTech AMPLIfied', 'National Hackathon Winner'],
@@ -127,7 +138,7 @@ test('lists the four results in the rail', async ({ page }) => {
 });
 
 test('carries both handwritten notes beside the cable', async ({ page }) => {
-  await page.goto('/');
+  await openFinished(page);
   const cable = page.locator('[data-cable]');
   await expect(cable).toContainText('tried a lot of things');
   await expect(cable).toContainText('stayed for the ones');
@@ -135,7 +146,7 @@ test('carries both handwritten notes beside the cable', async ({ page }) => {
 });
 
 test('hides the mascot, the cable and the beam from screen readers', async ({ page }) => {
-  await page.goto('/');
+  await openFinished(page);
   for (const hook of ['[data-mascot]', '[data-cable]', '[data-beam]']) {
     await expect(page.locator(hook)).toHaveAttribute('aria-hidden', 'true');
   }

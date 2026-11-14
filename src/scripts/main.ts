@@ -1,24 +1,29 @@
 // The page's one script. Each part of the page that moves is set up by its own
-// function, and they are all called from the bottom of this file.
+// function or module, and they are put together at the bottom of this file.
 
 import { CHANNELS, TIMING } from '../data/site';
 import { createChannels } from './channels';
 import { channelToAngle, setDialValue, wireDial } from './dial';
+import { find } from './dom';
 import { startRail } from './rail';
+import { createPageOpening, type Cast, type Scene } from './scene';
+
+declare global {
+  interface Window {
+    /** Set by the page's head: shows the finished page if this script never runs. */
+    openingRescue?: number;
+  }
+}
 
 type Timer = ReturnType<typeof setTimeout>;
-
-function find<E extends Element>(selector: string, within: ParentNode = document): E {
-  const found = within.querySelector<E>(selector);
-  if (found === null) throw new Error(`Nothing on the page matches ${selector}`);
-  return found;
-}
 
 // ---------- channels and the dial ----------
 
 // The words under the set fade out for this long before they are replaced.
 const WORDS_OUT_MS = 240;
 const NUDGE_MS = 1100;
+// With reduced motion a new picture fades in over the old one for this long.
+const CROSS_FADE_MS = 220;
 
 // A burst of static: the noise jumps about while it thins out in four steps.
 const STATIC_FRAMES: Keyframe[] = [
@@ -39,7 +44,13 @@ const NUDGE_FRAMES: Keyframe[] = [
 
 const RING_FRAMES: Keyframe[] = [{ strokeDashoffset: 100 }, { strokeDashoffset: 0 }];
 
-function initChannels(): void {
+/**
+ * Wires the set and its dial, and hands back the switch. Nothing plays or counts
+ * down until `switchOn` is called. With `reduced`, for a visitor who asked for less
+ * motion, the set never changes channel by itself, shows each clip's still frame
+ * without playing it, and changes channel by a plain cross-fade with no static.
+ */
+function initChannels(reduced: boolean): Cast['set'] {
   const root = document.documentElement;
   const screen = find<HTMLElement>('[data-screen]');
   const clips = Array.from(screen.querySelectorAll('video'));
@@ -60,6 +71,7 @@ function initChannels(): void {
 
   // One of each at a time, however fast the channel is changed.
   let flash: Animation | undefined;
+  let fade: Animation | undefined;
   let fill: Animation | undefined;
   let wiggle: Animation | undefined;
   let osdTimer: Timer | undefined;
@@ -80,8 +92,28 @@ function initChannels(): void {
     flash = fuzz.animate(STATIC_FRAMES, { duration: TIMING.staticMs, id: 'static' });
   }
 
-  // If a clip cannot play, its poster is what the screen shows.
+  // In place of the static: the picture that was on stays under the new one
+  // while the new one fades in.
+  function crossFade(from: HTMLVideoElement, to: HTMLVideoElement): void {
+    fade?.cancel();
+    for (const clip of clips) clip.removeAttribute('data-leaving');
+    from.setAttribute('data-leaving', '');
+    fade = to.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: CROSS_FADE_MS,
+      easing: 'ease',
+      id: 'fade',
+    });
+    // A fade that was cut short has already been tidied up by the one after it.
+    fade.finished.then(
+      () => from.removeAttribute('data-leaving'),
+      () => undefined,
+    );
+  }
+
+  // If a clip cannot play, its poster is what the screen shows. It is also all
+  // the screen shows for a visitor who asked for less motion.
   function play(clip: HTMLVideoElement): void {
+    if (reduced) return;
     if (clip.error !== null) clip.load();
     clip.play().catch(() => undefined);
   }
@@ -90,12 +122,14 @@ function initChannels(): void {
   // as the static begins, so the swap and the clip's first frame replacing its
   // poster both happen behind the static.
   function showClip(index: number): void {
+    const was = clips.find((clip) => clip.hasAttribute('data-on'));
     clips.forEach((clip, at) => {
       clip.toggleAttribute('data-on', at === index);
       if (at !== index) clip.pause();
       // A clip that has not played yet is left alone, so it keeps its poster.
       if (clip.currentTime > 0) clip.currentTime = 0;
     });
+    if (reduced && was !== undefined && was !== clips[index]) crossFade(was, clips[index]);
     if (!document.hidden) play(clips[index]);
   }
 
@@ -148,9 +182,11 @@ function initChannels(): void {
 
   // ----- the dial -----
 
-  // The ring round the dial fills over the wait before the next change.
+  // The ring round the dial fills over the wait before the next change. A set
+  // that does not change by itself has nothing to count.
   function fillRing(waitMs: number): void {
     fill?.cancel();
+    if (reduced) return;
     fill = ring.animate(RING_FRAMES, { duration: waitMs, fill: 'forwards', id: 'ring' });
   }
 
@@ -162,7 +198,7 @@ function initChannels(): void {
   // Until the dial has been turned once, it wiggles a while after each change.
   function nudgeLater(): void {
     clearTimeout(nudgeTimer);
-    if (touched) return;
+    if (touched || reduced) return;
     nudgeTimer = setTimeout(() => {
       wiggle?.cancel();
       wiggle = dial.animate(NUDGE_FRAMES, { duration: NUDGE_MS, id: 'nudge' });
@@ -182,7 +218,7 @@ function initChannels(): void {
     root.dataset.channel = String(CHANNELS[index].number);
     dial.style.setProperty('--dial-angle', `${channelToAngle(index)}deg`);
     setDialValue(dial, index);
-    flashStatic();
+    if (!reduced) flashStatic();
     showClip(index);
     readOut(index);
     swapWords(index);
@@ -194,7 +230,7 @@ function initChannels(): void {
     count: CHANNELS.length,
     autoMs: TIMING.autoMs,
     afterManualMs: TIMING.afterManualMs,
-    auto: true,
+    auto: !reduced,
     onTune: draw,
   });
 
@@ -229,11 +265,13 @@ function initChannels(): void {
     clips[controller.current()].pause();
   }
 
-  // Shows channel 1 and starts the set changing by itself.
+  // Shows channel 1 and starts the set changing by itself. A set switched on
+  // while the page is out of sight rests until it is looked at.
   function switchOn(): void {
     on = true;
     controller.tune(0, false);
-    if (!document.hidden) resume();
+    if (document.hidden) rest();
+    else resume();
   }
 
   document.addEventListener('visibilitychange', () => {
@@ -242,25 +280,83 @@ function initChannels(): void {
     else resume();
   });
 
-  switchOn();
+  return { isOn: () => on, switchOn, clip: clips[0] };
 }
 
-// ---------- the rail of results ----------
+// ---------- the opening ----------
 
-// Sets the rail of results rolling, or leaves it as a list to scroll by hand for
-// a visitor who asked for less motion.
-function initRail(): void {
-  const rail = document.querySelector<HTMLElement>('[data-rail]');
-  if (rail === null) return;
-  startRail(rail, {
-    delayMs: 0,
-    rampMs: 600,
-    axis: 'y',
-    reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
-  });
+// The picture comes on 520 ms into power-on, and the mascot is due 1300 ms into it.
+const RAIL_AFTER_PICTURE_MS = 780;
+const DONE_AFTER_RAIL_MS = 2000;
+
+// What follows the picture coming on, until the opening is over: the rail is
+// revealed, and a little later the opening ends, which is when the note beside
+// the dial fades in. The mascot's scene takes the place of this one function.
+async function railHandOff(scene: Scene): Promise<void> {
+  await scene.wait(RAIL_AFTER_PICTURE_MS);
+  scene.lightRail();
+  await scene.wait(DONE_AFTER_RAIL_MS);
 }
 
 // ---------- everything the page starts ----------
 
-initRail();
-initChannels();
+function start(): void {
+  const root = document.documentElement;
+  // A visitor who asked for less motion gets the finished page with nothing
+  // moving by itself: the page's head has marked the request.
+  const reduced = root.hasAttribute('data-reduced');
+  const rail = find<HTMLElement>('[data-rail]');
+
+  const opening = createPageOpening(
+    {
+      set: initChannels(reduced),
+      rollRail: (delayMs, rampMs) => startRail(rail, { delayMs, rampMs, axis: 'y', reduced }),
+    },
+    railHandOff,
+  );
+
+  // The opening plays only from the dark page the head set up for it. With
+  // reduced motion, or if the page gave up waiting for this script and showed
+  // itself finished, there is no opening: only the finished page to set going.
+  if (root.dataset.stage !== 'off') {
+    opening.skip('at once');
+    return;
+  }
+
+  // A click, a tap or a key at any moment goes straight to the finished page. It
+  // is heard on its way down to whatever it landed on, and is not stopped, so a
+  // press on the dial or a link finds the finished page and then does its own job.
+  const inputs = new AbortController();
+  const skip = (): void => opening.skip('eased');
+  window.addEventListener('pointerdown', skip, { capture: true, signal: inputs.signal });
+  window.addEventListener('keydown', skip, { capture: true, signal: inputs.signal });
+
+  // The opening is for someone watching. A page opened out of sight keeps it for
+  // when it is first looked at; a page that goes out of sight part-way is
+  // finished there and then, so nothing has queued up by the time it is back.
+  let playing = false;
+  const play = (): void => {
+    playing = true;
+    opening.play();
+  };
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.hidden && playing) opening.skip('at once');
+      else if (!document.hidden && !playing) play();
+    },
+    { signal: inputs.signal },
+  );
+  void opening.finished.then(() => inputs.abort());
+
+  if (!document.hidden) play();
+}
+
+clearTimeout(window.openingRescue);
+try {
+  start();
+} catch (error) {
+  // Whatever went wrong, the page must not be left dark.
+  document.documentElement.dataset.stage = 'done';
+  throw error;
+}

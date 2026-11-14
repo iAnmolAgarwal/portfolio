@@ -42,18 +42,26 @@ export function createOpening(
     resolveFinished = resolve;
   });
 
-  // The one way the opening ends, whether it ran to the end or was skipped.
+  // The one way the opening ends, whether it ran to the end or was skipped. If
+  // reporting `done` throws, `finish` still runs, and if `finish` throws,
+  // `finished` still resolves: whoever waits on the opening is never left waiting.
   function end(): void {
     if (done) return;
     done = true;
     for (const timer of timers) clearTimeout(timer);
     timers.length = 0;
-    if (stage !== 'done') {
-      stage = 'done';
-      opts.onStage('done');
+    try {
+      if (stage !== 'done') {
+        stage = 'done';
+        opts.onStage('done');
+      }
+    } finally {
+      try {
+        opts.finish();
+      } finally {
+        resolveFinished();
+      }
     }
-    opts.finish();
-    resolveFinished();
   }
 
   // A step that fails must not stop the opening. An abort is an ordinary way for
@@ -63,12 +71,22 @@ export function createOpening(
     console.error(error);
   }
 
+  // The page's own callbacks failing is always worth seeing, skipped or not.
+  function reportCallback(error: unknown): void {
+    console.error(error);
+  }
+
   function enter(step: OpeningStep): void {
     if (done) return;
     stepsToEnter -= 1;
     const isLast = stepsToEnter === 0;
     stage = step.stage;
-    opts.onStage(step.stage);
+    // A stage that could not be reported must not cost the opening its step.
+    try {
+      opts.onStage(step.stage);
+    } catch (error) {
+      reportCallback(error);
+    }
     if (done) return;
 
     let result: void | Promise<void> = undefined;
@@ -78,7 +96,8 @@ export function createOpening(
       report(error);
     }
     const settled = Promise.resolve(result).catch(report);
-    if (isLast) void settled.then(end);
+    // Ending here has no caller to throw to, so what `end` throws is reported.
+    if (isLast) void settled.then(end).catch(reportCallback);
   }
 
   return {

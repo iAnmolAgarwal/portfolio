@@ -288,4 +288,105 @@ describe('createOpening', () => {
     expect(entered.map((entry) => entry.stage)).toEqual(['off', 'cable', 'plugged', 'on']);
     expect(finish).toHaveBeenCalledTimes(1);
   });
+
+  describe("when the page's own callbacks throw", () => {
+    const broken = new Error('the page could not be finished');
+
+    it('still resolves finished, and reports it, when finish throws at the natural end', async () => {
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const finish = vi.fn<() => void>(() => {
+        throw broken;
+      });
+      const opening = createOpening([{ stage: 'cable', atMs: 500, enter: () => undefined }], {
+        onStage: () => undefined,
+        finish,
+      });
+      let resolved = false;
+      void opening.finished.then(() => {
+        resolved = true;
+      });
+
+      opening.start();
+      // An unhandled rejection here would fail the run.
+      await vi.advanceTimersByTimeAsync(500);
+      expect(finish).toHaveBeenCalledTimes(1);
+      expect(resolved).toBe(true);
+      expect(opening.stage()).toBe('done');
+      expect(errors.mock.calls.map(([error]) => error)).toEqual([broken]);
+    });
+
+    it('reports it even when finish had already aborted the signal', async () => {
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const opening = createOpening([{ stage: 'cable', atMs: 500, enter: () => undefined }], {
+        onStage: () => undefined,
+        finish: () => {
+          opening.skip();
+          throw broken;
+        },
+      });
+      opening.start();
+      await vi.advanceTimersByTimeAsync(500);
+      await expect(opening.finished).resolves.toBeUndefined();
+      expect(errors.mock.calls.map(([error]) => error)).toEqual([broken]);
+    });
+
+    it('still resolves finished when finish throws on a skip, and the skipper hears of it', async () => {
+      const finish = vi.fn<() => void>(() => {
+        throw broken;
+      });
+      const skipped = createOpening([{ stage: 'cable', atMs: 500, enter: () => undefined }], {
+        onStage: () => undefined,
+        finish,
+      });
+      skipped.start();
+      expect(() => skipped.skip()).toThrow(broken);
+      await expect(skipped.finished).resolves.toBeUndefined();
+      expect(skipped.stage()).toBe('done');
+      // A second skip finds the opening over and does nothing.
+      expect(() => skipped.skip()).not.toThrow();
+      expect(finish).toHaveBeenCalledTimes(1);
+    });
+
+    it('still calls finish and resolves finished when reporting done throws', async () => {
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const finish = vi.fn<() => void>();
+      const opening = createOpening([{ stage: 'cable', atMs: 500, enter: () => undefined }], {
+        onStage: (stage) => {
+          if (stage === 'done') throw broken;
+        },
+        finish,
+      });
+      opening.start();
+      await vi.advanceTimersByTimeAsync(500);
+      await expect(opening.finished).resolves.toBeUndefined();
+      expect(finish).toHaveBeenCalledTimes(1);
+      expect(errors.mock.calls.map(([error]) => error)).toEqual([broken]);
+    });
+
+    it('still enters the step and finishes when reporting a stage throws', async () => {
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const finish = vi.fn<() => void>();
+      const entered: Stage[] = [];
+      const step = (stage: Stage, atMs: number): OpeningStep => ({
+        stage,
+        atMs,
+        enter: () => {
+          entered.push(stage);
+        },
+      });
+      const opening = createOpening([step('off', 0), step('cable', 500), step('on', 4400)], {
+        onStage: (stage) => {
+          if (stage === 'off' || stage === 'on') throw broken;
+        },
+        finish,
+      });
+
+      expect(() => opening.start()).not.toThrow();
+      await vi.advanceTimersByTimeAsync(4400);
+      expect(entered).toEqual(['off', 'cable', 'on']);
+      expect(finish).toHaveBeenCalledTimes(1);
+      await expect(opening.finished).resolves.toBeUndefined();
+      expect(errors.mock.calls.map(([error]) => error)).toEqual([broken, broken]);
+    });
+  });
 });

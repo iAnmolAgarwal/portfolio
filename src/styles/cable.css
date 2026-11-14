@@ -23,6 +23,8 @@
 /* The ring that pulses out when the plug goes in. Not there once it is in. */
 .cable .spark {
   opacity: 0;
+  /* It grows from the plug: the centre of the circle, in the drawing's own units. */
+  transform-origin: 4px 120px;
 }
 
 .cable .doodle {
@@ -35,4 +37,17 @@
   font-family: var(--serif);
   font-size: 19px;
   font-style: italic;
+}
+
+/*
+ * The opening: before the cable's cue the line is undrawn, and its notes, its
+ * small drawings and the plug are unseen. The script draws them in from there.
+ */
+html[data-stage='off'] .cable .wire {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+html[data-stage='off'] .cable :is(.note, .doodle, .plug) {
+  opacity: 0;
 }

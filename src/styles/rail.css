@@ -13,6 +13,8 @@
   top: 0;
   bottom: 0;
   width: 1px;
+  /* In the opening the tracks draw downward from the top. */
+  transform-origin: top center;
   background: linear-gradient(
     to bottom,
     transparent,
@@ -218,4 +220,17 @@
 
 .card .sub {
   grid-column: 1 / -1;
+}
+
+/*
+ * The opening: the rail and its tracks are out of sight until they are lit. From
+ * there the rail fades up to its resting strength by its own transition, and the
+ * script wipes it open from the top and draws the tracks down.
+ */
+html:not([data-stage='lit'], [data-stage='done']) .results {
+  visibility: hidden;
+}
+
+html:not([data-stage='lit'], [data-stage='done']) :is(.rail, .trk) {
+  opacity: 0;
 }

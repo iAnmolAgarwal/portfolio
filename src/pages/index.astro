@@ -22,6 +22,10 @@ import { CHANNELS, PERSON } from '../data/site';
 // The page is served finished, with the first channel on, so it is complete
 // before any script runs and for a visitor who has none.
 const first = CHANNELS[0];
+
+// If the page's script has not taken over this long after the head was read, the
+// page stops waiting for its opening and shows itself finished.
+const RESCUE_MS = 4000;
 ---
 
 <!doctype html>
@@ -30,6 +34,25 @@ const first = CHANNELS[0];
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{PERSON.name}</title>
+    {
+      /*
+       * Before the first paint. Where the opening will play, the page starts dark
+       * (`off`), so the finished page never flashes up ahead of it. A visitor who
+       * asked for less motion keeps the finished page and is marked `data-reduced`.
+       */
+    }
+    <script is:inline define:vars={{ RESCUE_MS }}>
+      (function (root) {
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          root.setAttribute('data-reduced', '');
+          return;
+        }
+        root.setAttribute('data-stage', 'off');
+        window.openingRescue = setTimeout(function () {
+          root.setAttribute('data-stage', 'done');
+        }, RESCUE_MS);
+      })(document.documentElement);
+    </script>
   </head>
   <body>
     <TopBar />

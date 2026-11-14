@@ -154,7 +154,8 @@ body {
   text-align: center;
   transition:
     opacity 0.7s ease,
-    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    visibility 0s;
 }
 
 /* On a channel change the words dip out quickly and the next ones ease back in. */
@@ -199,4 +200,42 @@ body {
 .now-links .link:hover::after,
 .now-links .link:focus-visible::after {
   opacity: 1;
+}
+
+/* ---------- the opening ---------- */
+
+/*
+ * The page is served finished, with `data-stage="done"`. Where scripting is on
+ * (and less motion has not been asked for) the page's head sets the stage to `off`
+ * before the first paint, and the script walks it through the opening:
+ * off, cable, plugged, on, mascot, lit, done.
+ *
+ * The rules keyed on the stage, here and in the other stylesheets, say what is out
+ * of sight until its cue. The script animates from one state to the next, or the
+ * element's own transition does. Either way `done` is always the finished page.
+ */
+
+/* Before anything has happened: the name, the links and the set wait to fade up. */
+html[data-stage='off'] :is(.top, .set) {
+  opacity: 0;
+  transform: translateY(calc(10 * var(--u)));
+}
+
+/*
+ * Until the set is on there are no words under it. They wait where the words of
+ * any channel change wait, and rise in the same way.
+ */
+html:is([data-stage='off'], [data-stage='cable'], [data-stage='plugged']) .now {
+  opacity: 0;
+  transform: translateY(calc(6 * var(--u)));
+  visibility: hidden;
+}
+
+/*
+ * The stage turns `on` as the power-on flash begins. The picture comes on a moment
+ * into the flash and the words follow the picture, as they do on every channel
+ * change, so they wait before they rise in. The script says how long.
+ */
+html[data-stage='on'] .now:not([data-swapping]) {
+  transition-delay: var(--words-after, 0s);
 }
