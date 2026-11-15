@@ -814,6 +814,21 @@ test.describe('the rail on a phone', () => {
     await expect.poll(async () => (await rolled(page)).x).toBeGreaterThan(held + 2);
   });
 
+  test('a finger drawn along the strip carries the cards with it, and it rolls on after', async ({
+    page,
+  }) => {
+    await open(page, PHONE);
+    const strip = await boxOf(page.locator('[data-rail]'));
+    const from = centreOf(strip);
+    const before = (await rolled(page)).x;
+    await swipe(page, { x: from.x + 60, y: from.y }, -120);
+    // The cards went left with the finger (less the few pixels that made it a
+    // drag), and a flick may carry them a little further.
+    const after = (await rolled(page)).x;
+    expect(after).toBeGreaterThan(before + 90);
+    await expect.poll(async () => (await rolled(page)).x, { timeout: 8000 }).toBeGreaterThan(after + 40);
+  });
+
   test('a resize within the phone layout does not start it again', async ({ page }) => {
     await open(page, PHONE);
     const animation = (): Promise<string> =>

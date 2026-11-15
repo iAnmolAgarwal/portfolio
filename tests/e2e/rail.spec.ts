@@ -93,6 +93,66 @@ test.describe('the rail', () => {
     expect((await rolled(page)).y).toBeGreaterThan(held.y + 5);
   });
 
+  test('the wheel moves it by as much as it turns, both ways', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'A wheel belongs to a mouse; a finger on the strip is in phone.spec.ts.');
+    await open(page);
+    const rail = page.locator('[data-rail]');
+    await rail.hover();
+    const held = (await rolled(page)).y;
+
+    await page.mouse.wheel(0, 150);
+    await expect.poll(async () => (await rolled(page)).y).toBeCloseTo(held + 150, 0);
+    await page.mouse.wheel(0, -90);
+    await expect.poll(async () => (await rolled(page)).y).toBeCloseTo(held + 60, 0);
+  });
+
+  test('the wheel turned back past the start comes round to the end of the loop', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'A wheel belongs to a mouse.');
+    await open(page);
+    await page.locator('[data-rail]').hover();
+    const held = (await rolled(page)).y;
+    const length = await loopLength(page);
+
+    await page.mouse.wheel(0, -(held + 40));
+    await expect.poll(async () => (await rolled(page)).y).toBeCloseTo(length - 40, 0);
+  });
+
+  test('a drag carries the cards with the pointer, and the roll picks up after', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'Dragging with a mouse; a finger on the strip is in phone.spec.ts.');
+    await open(page);
+    const rail = page.locator('[data-rail]');
+    const box = await rail.boundingBox();
+    if (box === null) throw new Error('The rail is not on the page.');
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    const held = (await rolled(page)).y;
+
+    await page.mouse.down();
+    await page.mouse.move(x, y - 120, { steps: 6 });
+    await expect(rail).toHaveAttribute('data-dragging', '');
+    // The first 5 pixels decide it is a drag; the cards follow from there.
+    const dragged = (await rolled(page)).y;
+    expect(dragged).toBeGreaterThan(held + 90);
+    expect(dragged).toBeLessThanOrEqual(held + 120.5);
+    // Let it rest under the hand, so letting go does not throw it.
+    await page.waitForTimeout(250);
+    await page.mouse.up();
+    await expect(rail).not.toHaveAttribute('data-dragging');
+    expect((await rolled(page)).y).toBeCloseTo(dragged, 0);
+    // The drag moved the cards and selected nothing on the page.
+    expect(await page.evaluate(() => String(getSelection()))).toBe('');
+
+    await page.mouse.move(720, 450);
+    await expect.poll(async () => (await rolled(page)).y, { timeout: 6000 }).toBeGreaterThan(dragged + 5);
+  });
+
   test('loops over exactly one copy of the cards, and still does after a resize', async ({
     page,
   isMobile,

@@ -101,6 +101,32 @@
 }
 
 /*
+ * The rolling rail can be moved by hand: the wheel, a drag, or a finger. The
+ * browser keeps the sideways pan and the pinch for itself and leaves travel
+ * along the rail to the script; a drag does not select the lettering.
+ */
+.rail[data-motion='roll'] {
+  cursor: grab;
+  touch-action: pan-x pinch-zoom;
+  -webkit-user-select: none;
+  user-select: none;
+  /* A finger held on a picture must not bring up the phone's save sheet. */
+  -webkit-touch-callout: none;
+}
+
+.rail[data-motion='roll'][data-axis='x'] {
+  touch-action: pan-y pinch-zoom;
+}
+
+.rail[data-motion='roll'][data-dragging] {
+  cursor: grabbing;
+}
+
+.rail[data-motion='roll'] img {
+  -webkit-user-drag: none;
+}
+
+/*
  * For a visitor who asked for less motion the script leaves the rail still and it
  * scrolls by hand along its axis instead. The cards are shown once, the fades are
  * short, and the list has that much room at each end, so the first and the last

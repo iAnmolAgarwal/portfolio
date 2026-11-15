@@ -1,6 +1,9 @@
 // The rail's roll. The cards are in the page twice, one copy after the other, and
 // the track slides by exactly one copy and starts again, so the loop has no seam.
-// A visitor who asked for less motion gets a list to scroll by hand instead.
+// A visitor can also move it by hand, with the wheel, a drag or a finger, to
+// reach a card without waiting for it; the roll picks up again from wherever
+// they left it. A visitor who asked for less motion gets a list to scroll by
+// hand instead.
 
 export interface RailOptions {
   /** How long to wait before the roll begins. */
@@ -15,6 +18,50 @@ export interface RailOptions {
 
 /** One trip round the loop at full speed. */
 const LOOP_MS = 44_000;
+
+/** How long the roll waits after the hand has left the cards alone. */
+const RESUME_MS = 1600;
+
+/** How far the pointer must travel before a press counts as a drag. */
+const DRAG_PX = 5;
+
+/** A flick's speed falls to about a third in this long. */
+const GLIDE_MS = 325;
+
+/** The speed, in pixels a millisecond, under which a glide has come to rest. */
+const REST_SPEED = 0.02;
+
+/** A flick is never thrown faster than this, in pixels a millisecond. */
+const TOP_SPEED = 4;
+
+/** Only the pointer's last moves this recent say how fast it was going. */
+const FLICK_WINDOW_MS = 100;
+
+/** Where the pointer was along the rail's axis, and when. */
+export interface Trace {
+  at: number;
+  time: number;
+}
+
+/** A time on the loop, brought back inside one trip round it. */
+export function wrapTime(time: number, duration: number): number {
+  const wrapped = time % duration;
+  return wrapped < 0 ? wrapped + duration : wrapped;
+}
+
+/**
+ * How fast the cards were being pushed when the pointer let go, in pixels a
+ * millisecond: positive the way the roll goes (the pointer moving up a column,
+ * or left along a row). 0 if the pointer had stopped before it lifted.
+ */
+export function flickSpeed(trace: readonly Trace[], liftedAt: number): number {
+  const recent = trace.filter((point) => liftedAt - point.time <= FLICK_WINDOW_MS);
+  const first = recent[0];
+  const last = recent[recent.length - 1];
+  if (first === undefined || last === undefined || last.time <= first.time) return 0;
+  const speed = (first.at - last.at) / (last.time - first.time);
+  return Math.min(TOP_SPEED, Math.max(-TOP_SPEED, speed));
+}
 
 /** How to stop what an earlier call set rolling, for each rail. */
 const stops = new WeakMap<HTMLElement, () => void>();
@@ -48,11 +95,56 @@ function roll(root: HTMLElement, track: HTMLElement, opts: RailOptions): () => v
   let pointerInside = root.matches(':hover');
   let focusInside = root.matches(':focus-visible') || root.querySelector(':focus-visible') !== null;
 
-  // The roll waits while the pointer is over the rail or the keyboard is in it.
+  // By hand: a drag under way, a flick still gliding, and until when the roll
+  // leaves the cards where the hand put them.
+  let dragging = false;
+  let glide = 0;
+  let handUntil = 0;
+  let resume: ReturnType<typeof setTimeout> | undefined;
+
+  // The roll waits while the pointer is over the rail or the keyboard is in it,
+  // and while a hand is moving the cards or has only just let go of them.
   const hold = (): void => {
     if (loop === null) return;
-    if (pointerInside || focusInside) loop.pause();
+    const inHand = dragging || glide !== 0 || performance.now() < handUntil;
+    if (pointerInside || focusInside || inHand) loop.pause();
     else loop.play();
+  };
+
+  // Moves the cards `px` further along the loop (back, if negative) by setting
+  // where the roll is in its trip, so the roll goes on from there.
+  const shift = (px: number): void => {
+    if (loop === null || length <= 0) return;
+    const now = Number(loop.currentTime ?? 0);
+    loop.currentTime = wrapTime(now + (px / length) * LOOP_MS, LOOP_MS);
+  };
+
+  // The hand moved the cards: the roll stays off them for a moment longer.
+  const byHand = (): void => {
+    handUntil = performance.now() + RESUME_MS;
+    clearTimeout(resume);
+    resume = setTimeout(hold, RESUME_MS + 20);
+    hold();
+  };
+
+  const stopGlide = (): void => {
+    cancelAnimationFrame(glide);
+    glide = 0;
+  };
+
+  // A flick carries the cards on and slows to a stop.
+  const startGlide = (speed: number): void => {
+    if (Math.abs(speed) < REST_SPEED) return;
+    let before = performance.now();
+    const step = (now: number): void => {
+      const elapsed = Math.min(64, Math.max(0, now - before));
+      before = now;
+      shift(speed * elapsed);
+      speed *= Math.exp(-elapsed / GLIDE_MS);
+      glide = Math.abs(speed) < REST_SPEED ? 0 : requestAnimationFrame(step);
+      byHand();
+    };
+    glide = requestAnimationFrame(step);
   };
 
   // Sizes the loop from the layout as it is now. The roll keeps its place in the
@@ -127,6 +219,103 @@ function roll(root: HTMLElement, track: HTMLElement, opts: RailOptions): () => v
     { signal },
   );
 
+  // The wheel and the trackpad move the cards by as much as they report. A
+  // column answers their vertical travel only, so a sideways swipe is left to
+  // the browser; a row answers whichever way they travelled more, since a mouse
+  // wheel only has the vertical. Pinching to zoom (the wheel with Control) is
+  // the browser's too.
+  root.addEventListener(
+    'wheel',
+    (event) => {
+      if (loop === null || event.ctrlKey) return;
+      const sideways = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+      const travel = axis === 'x' && sideways ? event.deltaX : event.deltaY;
+      if (travel === 0 || (axis === 'y' && sideways)) return;
+      event.preventDefault();
+      const unit =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? 16
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? root.clientHeight
+            : 1;
+      stopGlide();
+      shift(travel * unit);
+      byHand();
+    },
+    { signal, passive: false },
+  );
+
+  // A press that travels becomes a drag: the cards follow the pointer, and a
+  // flick at the end carries them on. A press that stays put is left alone.
+  const along = (event: PointerEvent): number => (axis === 'y' ? event.clientY : event.clientX);
+  let press: { id: number; from: number; last: number } | null = null;
+  let trace: Trace[] = [];
+  root.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+      stopGlide();
+      press = { id: event.pointerId, from: along(event), last: along(event) };
+      trace = [];
+    },
+    { signal },
+  );
+  root.addEventListener(
+    'pointermove',
+    (event) => {
+      if (press === null || event.pointerId !== press.id) return;
+      const at = along(event);
+      if (!dragging) {
+        if (Math.abs(at - press.from) < DRAG_PX) return;
+        dragging = true;
+        press.last = at;
+        root.dataset.dragging = '';
+        getSelection()?.removeAllRanges();
+        // Keep hearing the pointer if it strays off the rail mid-drag.
+        try {
+          root.setPointerCapture(event.pointerId);
+        } catch {
+          // The pointer is already gone; the drag ends with it.
+        }
+      }
+      shift(press.last - at);
+      press.last = at;
+      trace.push({ at, time: event.timeStamp });
+      if (trace.length > 12) trace.shift();
+      byHand();
+    },
+    { signal },
+  );
+  const release = (event: PointerEvent): void => {
+    if (press === null || event.pointerId !== press.id) return;
+    press = null;
+    if (!dragging) return;
+    dragging = false;
+    delete root.dataset.dragging;
+    if (event.type === 'pointerup') startGlide(flickSpeed(trace, event.timeStamp));
+    byHand();
+  };
+  root.addEventListener('pointerup', release, { signal });
+  root.addEventListener('pointercancel', release, { signal });
+  // A drag moves the cards; it must not pick a picture up off the page, nor
+  // start selecting the page's words as the pointer passes over them (Safari
+  // does, from a press on the rail, unless the press itself is refused).
+  root.addEventListener('dragstart', (event) => event.preventDefault(), { signal });
+  root.addEventListener(
+    'mousedown',
+    (event) => {
+      if (event.button === 0) event.preventDefault();
+    },
+    { signal },
+  );
+  document.addEventListener(
+    'selectstart',
+    (event) => {
+      if (press !== null) event.preventDefault();
+    },
+    { signal },
+  );
+
   // The cards are sized from the viewport, so the loop is too. Watching the sizes
   // also catches a rail that was not laid out when the roll was asked for.
   const sizes = new ResizeObserver(fit);
@@ -139,7 +328,10 @@ function roll(root: HTMLElement, track: HTMLElement, opts: RailOptions): () => v
     listening.abort();
     sizes.disconnect();
     clearTimeout(timer);
+    clearTimeout(resume);
     cancelAnimationFrame(frame);
+    stopGlide();
+    delete root.dataset.dragging;
     loop?.cancel();
   };
 }
